@@ -1,5 +1,7 @@
 package com.seooptimizer.backend.model;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -32,5 +34,9 @@ public class User {
     
     private boolean enabled;
     private String verificationCode;
+
+    private String resetCode;
+    private LocalDateTime resetCodeGeneratedAt;
+
 }
 

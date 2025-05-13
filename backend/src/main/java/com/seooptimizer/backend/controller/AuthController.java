@@ -1,5 +1,6 @@
 package com.seooptimizer.backend.controller;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -88,7 +88,7 @@ public class AuthController {
         userRepository.save(user);
 
         try {
-            emailService.sendVerificationEmail(request.getEmail(), request.getName(), code);
+            emailService.sendVerificationEmail("Email Verification",request.getEmail(), request.getName(), code);
         } catch (Exception e) {
             return new ResponseEntity<>(new ApiResponse(500, "Failed to send verification email"),
                     HttpStatus.INTERNAL_SERVER_ERROR);
@@ -146,4 +146,55 @@ public class AuthController {
                     HttpStatus.BAD_REQUEST);
         }
     }
+
+    @PostMapping("/forgot-password")
+public ResponseEntity<?> forgotPassword(@RequestParam String email) {
+    Optional<User> optionalUser = userRepository.findByEmail(email);
+    if (optionalUser.isEmpty()) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(404,"User not found"));
+    }
+
+    User user = optionalUser.get();
+    String resetCode = generateVerificationCode();
+    user.setResetCode(resetCode);
+    user.setResetCodeGeneratedAt(LocalDateTime.now());
+    userRepository.save(user);
+
+    try {
+        emailService.sendVerificationEmail("Password Reset",user.getEmail(), user.getName(), resetCode);
+    } catch (Exception e) {
+        return new ResponseEntity<>(new ApiResponse(500, "Failed to send verification email"),HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    return ResponseEntity.ok(new ApiResponse(200, "Password reset code sent to email"));
 }
+
+@PostMapping("/reset-password")
+public ResponseEntity<?> resetPassword(@RequestParam String email, @RequestParam String code, @RequestParam String newPassword) {
+    Optional<User> optionalUser = userRepository.findByEmail(email);
+    if (optionalUser.isEmpty()) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(404,"User not found"));
+    }
+
+    User user = optionalUser.get();
+
+    if (user.getResetCode() == null || !user.getResetCode().equals(code)) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(400,"Invalid reset code"));
+    }
+
+    if (user.getResetCodeGeneratedAt().plusMinutes(15).isBefore(LocalDateTime.now())) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse( 400, "Reset code expired"));
+    }
+
+    user.setPassword(passwordEncoder.encode(newPassword));
+    user.setResetCode(null);
+    user.setResetCodeGeneratedAt(null);
+    userRepository.save(user);
+
+    return ResponseEntity.ok(new ApiResponse(200,"Password has been successfully reset"));
+}
+
+
+}
+
+

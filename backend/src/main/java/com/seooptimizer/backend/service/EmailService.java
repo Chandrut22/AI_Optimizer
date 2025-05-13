@@ -18,8 +18,8 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
 
-    public void sendVerificationEmail(String toEmail, String name, String code) throws MessagingException, IOException {
-        String htmlContent = loadTemplateWithValues(name, code);
+    public void sendVerificationEmail(String email_name,String toEmail, String name, String code) throws MessagingException, IOException {
+        String htmlContent = loadTemplateWithValues(email_name,name, code);
 
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -31,12 +31,12 @@ public class EmailService {
         mailSender.send(message);
     }
 
-    private String loadTemplateWithValues(String name, String code) throws IOException {
+    private String loadTemplateWithValues(String email_name,String name, String code) throws IOException {
         ClassPathResource resource = new ClassPathResource("templates/email_verification_code.html");
 
         try (InputStream inputStream = resource.getInputStream()) {
             String template = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-            return template.replace("{{name}}", name)
+            return template.replace("{{email_name}}",email_name).replace("{{name}}", name)
                            .replace("{{code}}", code);
         }
     }
