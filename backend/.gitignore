@@ -1,3 +1,10 @@
+# Ignore all .yml files
+*.yml
+
+# Ignore all .properties files
+*.properties
+
+# Existing entries
 HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
