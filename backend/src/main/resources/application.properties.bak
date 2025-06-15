@@ -24,8 +24,8 @@ jwt.secret=a19f9141eb59e75ae99020aa32fcd438875406321f43725b83deebb922238672
 jwt.expirationMs=36000000
 
 # CORS Configuration
-cors.allowedOrigins=http://localhost:3000,https://staging.example.com,https://your-production-domain.com
-cors.allowedMethods=GET,POST,PUT,DELETE,OPTIONS
+sprintg.web.cors.allowedOrigins=http://localhost:3000,https://staging.example.com,https://your-production-domain.com
+spring.web.cors.allowed-methods=*
 cors.allowedHeaders=*
 cors.allowCredentials=true
 
