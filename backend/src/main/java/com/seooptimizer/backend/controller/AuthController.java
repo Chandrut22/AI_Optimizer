@@ -20,6 +20,7 @@ import com.seooptimizer.backend.dto.ApiResponse;
 import com.seooptimizer.backend.dto.JwtResponse;
 import com.seooptimizer.backend.dto.LoginRequest;
 import com.seooptimizer.backend.dto.RegisterRequest;
+import com.seooptimizer.backend.model.AuthProvider;
 import com.seooptimizer.backend.model.User;
 import com.seooptimizer.backend.repository.UserRepository;
 import com.seooptimizer.backend.security.CustomerUserDetailsService;
@@ -86,6 +87,7 @@ public class AuthController {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role("USER")
                 .enabled(false)
+                .provider(AuthProvider.LOCAL) 
                 .verificationCode(code)
                 .build();
 
