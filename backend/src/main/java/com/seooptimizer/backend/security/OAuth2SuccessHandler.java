@@ -29,10 +29,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         String email = oAuth2User.getAttribute("email");
 
-        // Generate token
-        String token = jwtUtil.generateToken(email);
+        String token = jwtUtil.generateAccessToken(email);
 
-        // Redirect to frontend with JWT in query param
         String redirectUrl = "http://localhost:3000/oauth2/success?token=" +
                 URLEncoder.encode(token, StandardCharsets.UTF_8);
 

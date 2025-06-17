@@ -1,4 +1,4 @@
-package com.seooptimizer.backend.model;
+package com.seooptimizer.backend.enumtype;
 
 public enum AuthProvider {
     LOCAL,

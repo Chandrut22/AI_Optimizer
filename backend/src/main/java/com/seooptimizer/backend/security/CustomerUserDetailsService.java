@@ -23,7 +23,10 @@ public class CustomerUserDetailsService implements UserDetailsService {
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
                 .password(user.getPassword())
-                .roles(user.getRole()) // e.g., USER or ADMIN (Spring will add ROLE_ prefix)
+                .roles(
+                    user.getRole().name() // if enum
+                    // or use .authorities(user.getRole()) if already has "ROLE_" prefix
+                )
                 .disabled(!user.isEnabled()) // reflects account enabled/disabled
                 .build();
     }

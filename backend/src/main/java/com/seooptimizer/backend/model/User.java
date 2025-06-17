@@ -2,6 +2,9 @@ package com.seooptimizer.backend.model;
 
 import java.time.LocalDateTime;
 
+import com.seooptimizer.backend.enumtype.AuthProvider;
+import com.seooptimizer.backend.enumtype.Role;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -35,7 +38,9 @@ public class User {
     @Column(nullable = true)
     private String password;
 
-    private String role;
+    @Enumerated(EnumType.STRING)
+    private Role role;
+
 
     private boolean enabled;
 

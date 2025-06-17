@@ -1,15 +1,21 @@
 package com.seooptimizer.backend.security;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
-import com.seooptimizer.backend.model.AuthProvider;
+import com.seooptimizer.backend.enumtype.AuthProvider;
+import com.seooptimizer.backend.enumtype.Role;
 import com.seooptimizer.backend.model.User;
 import com.seooptimizer.backend.repository.UserRepository;
 
@@ -29,23 +35,35 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         String email = oauth2User.getAttribute("email");
         String name = oauth2User.getAttribute("name");
 
+        if (email == null) {
+            throw new OAuth2AuthenticationException("Email not found from OAuth2 provider");
+        }
+
         Optional<User> userOpt = userRepository.findByEmail(email);
 
         User user = userOpt.orElseGet(() -> {
             User newUser = User.builder()
                     .email(email)
-                    .name(name)
+                    .name(name != null ? name : "OAuth User")
                     .provider(AuthProvider.GOOGLE)
-                    .role("ROLE_USER")
+                    .role(Role.USER)
                     .enabled(true)
                     .build();
             return userRepository.save(newUser);
         });
 
-        String jwt = jwtUtil.generateToken(email);
+        // Generate JWT token
+        String jwt = jwtUtil.generateAccessToken(user.getEmail());
 
-        oauth2User.getAttributes().put("jwt", jwt);
+        // Add JWT to attributes
+        Map<String, Object> attributes = new HashMap<>(oauth2User.getAttributes());
+        attributes.put("jwt", jwt);
 
-        return oauth2User;
+        // Use user's role from DB or default to ROLE_USER
+        return new DefaultOAuth2User(
+                Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getRole())),
+                attributes,
+                "email"  // the key that Spring uses to call getName()
+        );
     }
 }
