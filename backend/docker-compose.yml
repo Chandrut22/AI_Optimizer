@@ -9,29 +9,5 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/seo_optimizer
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: Chan2202
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_MAIL_HOST: smtp.gmail.com
-      SPRING_MAIL_PORT: 587
-      SPRING_MAIL_USERNAME: teamsigmoid@gmail.com
-      SPRING_MAIL_PASSWORD: rjyqhlvidmodptfw
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
-    depends_on:
-      - db
-
-  db:
-    image: postgres:latest
-    container_name: postgres_db
-    environment:
-      POSTGRES_DB: seo_optimizer
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Chan2202
-    volumes:
-      - db_data:/var/lib/postgresql/data
-
 volumes:
   db_data:

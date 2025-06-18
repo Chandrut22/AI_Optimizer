@@ -35,12 +35,10 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = true)
     private String password;
 
     @Enumerated(EnumType.STRING)
     private Role role;
-
 
     private boolean enabled;
 
@@ -53,6 +51,4 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AuthProvider provider;
-
-
 }
