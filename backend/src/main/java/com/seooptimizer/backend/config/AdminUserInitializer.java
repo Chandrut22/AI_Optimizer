@@ -35,9 +35,9 @@ public class AdminUserInitializer {
                         .build();
 
                 userRepository.save(admin);
-                System.out.println("✅ Admin user created with email: " + adminEmail);
+                System.out.println("Admin user created with email: " + adminEmail);
             } else {
-                System.out.println("ℹ️ Admin user already exists.");
+                System.out.println("Admin user already exists.");
             }
         };
     }
