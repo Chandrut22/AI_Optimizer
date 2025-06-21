@@ -31,6 +31,10 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = extractJwtFromRequest(request);
 
+        System.out.println(" --- JWT filter triggered for: " + request.getRequestURI());
+        System.out.println(" --- Extracted token: " + token);
+
+
         if (token != null) {
             String username = jwtUtil.extractUsername(token);
 
