@@ -11,9 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Navigation } from "../components/navigation"
+import { PasswordStrength } from "../components/password-strength"
 import { useAuth } from "../context/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, CheckCircle } from "lucide-react"
 
 export default function RegisterPage() {
   const [name, setName] = useState("")
@@ -23,35 +24,53 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
 
   const { register } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
+
+  const validatePassword = (pwd: string) => {
+    const requirements = [
+      pwd.length >= 8,
+      /[A-Z]/.test(pwd),
+      /[a-z]/.test(pwd),
+      /\d/.test(pwd),
+      /[!@#$%^&*(),.?":{}|<>]/.test(pwd),
+    ]
+    return requirements.every((req) => req)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
+    // Validation
     if (password !== confirmPassword) {
       setError("Passwords do not match")
       setIsLoading(false)
       return
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long")
+    if (!validatePassword(password)) {
+      setError("Password does not meet security requirements")
       setIsLoading(false)
       return
     }
 
     try {
-      await register(name, email, password)
+      const response = await register({ name, email, password })
+      setSuccess(true)
       toast({
-        title: "Account created!",
-        description: "Welcome to AI Optimizer. Your account has been created successfully.",
+        title: "Registration successful!",
+        description: response.message,
       })
-      navigate("/dashboard")
+
+      // Redirect to verification page after 2 seconds
+      setTimeout(() => {
+        navigate("/verify", { state: { email } })
+      }, 2000)
     } catch (error: any) {
       setError(error.response?.data?.message || "Failed to create account")
     } finally {
@@ -64,13 +83,32 @@ export default function RegisterPage() {
     setError("")
 
     try {
-      // Redirect to Google OAuth endpoint
       const googleAuthUrl = `${process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:8080"}/api/auth/google`
       window.location.href = googleAuthUrl
     } catch (error: any) {
       setError("Failed to initiate Google signup")
       setIsGoogleLoading(false)
     }
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen">
+        <Navigation />
+        <div className="flex items-center justify-center py-12 px-4">
+          <Card className="w-full max-w-md">
+            <CardContent className="text-center py-12">
+              <CheckCircle className="mx-auto h-12 w-12 text-green-600 mb-4" />
+              <h2 className="text-2xl font-bold mb-2">Registration Successful!</h2>
+              <p className="text-muted-foreground mb-4">
+                We've sent a verification code to your email address. Please check your inbox and verify your account.
+              </p>
+              <Button onClick={() => navigate("/verify", { state: { email } })}>Continue to Verification</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -156,12 +194,12 @@ export default function RegisterPage() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Create a password (min. 6 characters)"
+                  placeholder="Create a strong password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
                 />
+                <PasswordStrength password={password} />
               </div>
 
               <div className="space-y-2">
@@ -176,7 +214,7 @@ export default function RegisterPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || !validatePassword(password)}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Account
               </Button>

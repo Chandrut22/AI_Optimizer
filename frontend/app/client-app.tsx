@@ -32,7 +32,7 @@ const queryClient = new QueryClient({
   },
 })
 
-export default function App() {
+export function ClientApp() {
   const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
