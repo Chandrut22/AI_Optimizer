@@ -11,11 +11,20 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import com.seooptimizer.backend.dto.*;
+import com.seooptimizer.backend.dto.ApiResponse;
+import com.seooptimizer.backend.dto.JwtResponse;
+import com.seooptimizer.backend.dto.LoginRequest;
+import com.seooptimizer.backend.dto.RegisterRequest;
 import com.seooptimizer.backend.enumtype.AuthProvider;
 import com.seooptimizer.backend.enumtype.Role;
+import com.seooptimizer.backend.exception.TokenRefreshException;
 import com.seooptimizer.backend.model.RefreshToken;
 import com.seooptimizer.backend.model.User;
 import com.seooptimizer.backend.repository.UserRepository;
@@ -23,7 +32,7 @@ import com.seooptimizer.backend.security.CustomerUserDetailsService;
 import com.seooptimizer.backend.security.JwtUtil;
 import com.seooptimizer.backend.service.EmailService;
 import com.seooptimizer.backend.service.RefreshTokenService;
-import com.seooptimizer.backend.exception.TokenRefreshException;
+import com.seooptimizer.backend.service.UserService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -53,7 +62,8 @@ public class AuthController {
     @Autowired
     private RefreshTokenService refreshTokenService;
 
-    
+    @Autowired
+    private UserService userService;
 
     private boolean isStrongPassword(String password) {
         String passwordRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
@@ -239,4 +249,11 @@ public class AuthController {
         SecurityContextHolder.clearContext();
         return ResponseEntity.ok(new ApiResponse(200, "Logged out successfully"));
     }
+
+    @GetMapping("/visit")
+    public ResponseEntity<String> logVisit(@RequestParam Long userId) {
+        userService.trackDailyVisit(userId);
+        return ResponseEntity.ok("Visit Tracked");
+    }
+
 }
