@@ -10,6 +10,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import API from "@/lib/api";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -68,19 +69,31 @@ const Login: React.FC = () => {
 
     try {
       // Simulate API call
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          // Demo: Accept specific credentials for testing
-          if (
-            data.email === "demo@example.com" &&
-            data.password === "password123"
-          ) {
-            resolve(true);
-          } else {
-            reject(new Error("Invalid credentials"));
-          }
-        }, 1500);
-      });
+      const onSubmit = async (data: LoginData) => {
+  setIsLoading(true);
+  setLoginError(null);
+
+  try {
+    const response = await API.post("/auth/login", {
+            email: data.email,
+            password: data.password,
+    });
+
+          console.log("Login successful:", response.data);
+          localStorage.setItem("token", response.data.accessToken);
+
+          navigate("/dashboard");
+        } catch (error: any) {
+          console.error("Login error:", error);
+          const message =
+            error.response?.data?.message || "Incorrect email or password. Please try again.";
+          setLoginError(message);
+          setError("email", { type: "manual", message: "" });
+          setError("password", { type: "manual", message: "" });
+        } finally {
+          setIsLoading(false);
+        }
+      };
 
       // Success - redirect to dashboard
       console.log("Login successful:", data);

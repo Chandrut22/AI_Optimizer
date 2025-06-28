@@ -1,6 +1,10 @@
 package com.seooptimizer.backend.dto;
 
+import java.time.LocalDateTime;
+
+import com.seooptimizer.backend.enumtype.AuthProvider;
 import com.seooptimizer.backend.enumtype.Role;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -11,5 +15,8 @@ public class UserResponse {
     private String name;
     private String email;
     private Role role;
-    private boolean enabled;
+    private AuthProvider provider;
+    private Integer usageCount;
+    private Integer credits;
+    private LocalDateTime createdAt;
 }

@@ -10,6 +10,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import API from "@/lib/api";
 
 const registrationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -196,8 +197,24 @@ const Register: React.FC = () => {
     setIsLoading(true);
     try {
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      console.log("Registration data:", data);
+      const onSubmit = async (data: RegistrationData) => {
+  setIsLoading(true);
+  try {
+    const response = await API.post("/auth/register", {
+      name: data.name,
+      email: data.email,
+      password: data.password,
+    });
+
+    console.log("Registered:", response.data);
+    navigate("/verify-email");
+  } catch (error: any) {
+    console.error("Registration failed:", error);
+    alert(error.response?.data?.message || "Registration failed. Try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
       // Redirect to email verification page
       navigate("/verify-email");

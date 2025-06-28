@@ -33,7 +33,10 @@ public class AdminController {
                     user.getName(),
                     user.getEmail(),
                     user.getRole(),
-                    user.isEnabled()
+                    user.getProvider(),
+                    user.getUsageCount(),
+                    user.getCredits(),
+                    user.getCreatedAt()
                 ))
                 .toList();
     }
