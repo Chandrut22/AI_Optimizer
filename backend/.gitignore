@@ -1,5 +1,5 @@
 # Ignore all .yml files
-*.yml
+
 
 # Ignore all .properties files
 *.properties
