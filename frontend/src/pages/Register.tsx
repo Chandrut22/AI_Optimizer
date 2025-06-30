@@ -207,7 +207,15 @@ const Register: React.FC = () => {
     });
 
     console.log("Registered:", response.data);
-    navigate("/verify-email");
+
+    // ✅ Redirect to verification page and pass email in route state
+    navigate("/verify-email", {
+      state: {
+        email: data.email,
+        type: "register", // optional: you can use this in EmailVerification to differentiate flow
+        message: "A verification code has been sent to your email.",
+      },
+    });
   } catch (error: any) {
     console.error("Registration failed:", error);
     alert(error.response?.data?.message || "Registration failed. Try again.");
@@ -215,6 +223,7 @@ const Register: React.FC = () => {
     setIsLoading(false);
   }
 };
+
 
       // Redirect to email verification page
       navigate("/verify-email");

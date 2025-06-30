@@ -1,8 +1,8 @@
 import axios from "axios";
 
+// Access environment variable injected by Vite
 const API = axios.create({
-  baseURL: "http://localhost:8080/api",
-  withCredentials: true, // needed if your Spring Boot uses cookies for auth
+  baseURL: import.meta.env.VITE_API_BASE_URL,
 });
 
 export default API;

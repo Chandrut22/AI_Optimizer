@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const verificationSchema = z.object({
@@ -118,6 +118,7 @@ const EmailVerification: React.FC = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationCode, setVerificationCode] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Get state from navigation (from forgot password page)
   const locationState = location.state as {
@@ -306,7 +307,8 @@ const EmailVerification: React.FC = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email address"
+                  readOnly
+                  // placeholder="Enter your email address"
                   className={cn(
                     "rounded-lg bg-[#F3F4F6] dark:bg-[#334155] border-[#D1D5DB] dark:border-[#475569]",
                     "text-[#111827] dark:text-[#F8FAFC] placeholder:text-[#6B7280] dark:placeholder:text-[#94A3B8]",
