@@ -2,8 +2,9 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {BrowserRouter, Routes, Route} from 'react-router-dom';
 import { ThemeProvider } from './components/ThemeProvider';
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import Header from './components/Header';
 import Homepage from './pages/Homepage';
+import LoginPage from './pages/Login';
+import RegisterPage from './pages/Register';
 
 const queryClient = new QueryClient();
 
@@ -15,8 +16,8 @@ const App = () => {
                 <BrowserRouter>
                     <Routes>
                         <Route path='/' element={<Homepage />} />
-                        <Route path='/about' element={<div>About</div>} />
-                        <Route path='/contact' element={<div>Contact</div>} />
+                        <Route path='/login' element={<LoginPage />} />
+                        <Route path='/register' element={<RegisterPage />} />
                     </Routes>
                 </BrowserRouter>
             </ThemeProvider>

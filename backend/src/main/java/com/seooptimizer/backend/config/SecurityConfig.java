@@ -48,8 +48,9 @@ public class SecurityConfig {
                     "/",
                     "/login/**",
                     "/oauth2/**",
-                    "/api/auth/**" // ✅ Allow auth-related endpoints
+                    "/api/auth/**"
                 ).permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // <-- Add this line
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth -> oauth

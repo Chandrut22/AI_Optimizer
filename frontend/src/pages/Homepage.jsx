@@ -16,7 +16,7 @@ import {
 
 const Homepage = () => {
   return (
-    <div className="min-h-screen bg-background dark:bg-blue-950">
+    <div className="min-h-screen bg-background">
       <Header isLoggedIn={false} />
 
       {/* Hero Section */}
