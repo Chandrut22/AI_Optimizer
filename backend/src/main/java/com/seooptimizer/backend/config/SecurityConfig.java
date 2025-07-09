@@ -1,6 +1,6 @@
 package com.seooptimizer.backend.config;
 
-import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Bean; // ✅ use javax.annotation if you're on Java 8
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -19,6 +19,7 @@ import com.seooptimizer.backend.security.JwtFilter;
 import com.seooptimizer.backend.security.OAuth2SuccessHandler;
 import com.seooptimizer.backend.security.RestAuthenticationEntryPoint;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -29,7 +30,16 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
-    private final CorsConfig corsConfig; // Injected CORS properties
+    private final CorsConfig corsConfig;
+
+    @PostConstruct
+    public void logCorsConfig() {
+        System.out.println("✅ Loaded CORS Config:");
+        System.out.println("   ├─ Origins   : " + corsConfig.getAllowedOrigins());
+        System.out.println("   ├─ Methods   : " + corsConfig.getAllowedMethods());
+        System.out.println("   ├─ Headers   : " + corsConfig.getAllowedHeaders());
+        System.out.println("   └─ Credentials: " + corsConfig.isAllowCredentials());
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
