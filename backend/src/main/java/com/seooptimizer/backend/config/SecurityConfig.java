@@ -1,7 +1,5 @@
 package com.seooptimizer.backend.config;
 
-import java.util.List;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,12 +29,13 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
+    private final CorsConfig corsConfig; // Injected CORS properties
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ Enable CORS here
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(restAuthenticationEntryPoint)
@@ -69,10 +68,10 @@ public class SecurityConfig {
 
     private UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("http://localhost:5173")); // or use .setAllowedOrigins if preferred
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        config.setAllowCredentials(true); // Important for cookies/session-based auth
+        config.setAllowedOrigins(corsConfig.getAllowedOrigins());
+        config.setAllowedMethods(corsConfig.getAllowedMethods());
+        config.setAllowedHeaders(corsConfig.getAllowedHeaders());
+        config.setAllowCredentials(corsConfig.isAllowCredentials());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
