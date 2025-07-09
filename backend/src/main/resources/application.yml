@@ -36,8 +36,15 @@ spring:
   web:
     cors:
       allowed-origins: ${CORS_ORIGINS}
-      allowed-headers: "*"
-      allowed-methods: "*"
+      allowed-methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allowed-headers:
+        - Authorization
+        - Content-Type
       allow-credentials: true
     resources:
       add-mappings: true
