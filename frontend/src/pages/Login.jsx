@@ -75,6 +75,7 @@ const Login = () => {
           email: data.email,
           password: data.password,
         }),
+        credentials: 'include'
       });
 
       console.log("Login response:", response);

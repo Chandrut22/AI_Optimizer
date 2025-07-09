@@ -1,5 +1,7 @@
 package com.seooptimizer.backend.config;
 
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -26,23 +28,18 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
-    private final CorsConfig corsProperties;
-
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
-
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
 
-
-   @Bean
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            // .cors(cors -> cors.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ Enable CORS here
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exception -> exception
-                .authenticationEntryPoint(restAuthenticationEntryPoint) // ✅ Use it here
+                .authenticationEntryPoint(restAuthenticationEntryPoint)
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
@@ -51,7 +48,7 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/api/auth/**"
                 ).permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // <-- Add this line
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth -> oauth
@@ -60,12 +57,10 @@ public class SecurityConfig {
                 )
                 .successHandler(oAuth2SuccessHandler)
             )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class); // ✅ JWT filter
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-
-
 
     @Bean
     public CorsFilter corsFilter() {
@@ -74,10 +69,10 @@ public class SecurityConfig {
 
     private UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(corsProperties.getAllowedOrigins());
-        config.setAllowedMethods(corsProperties.getAllowedMethods());
-        config.setAllowedHeaders(corsProperties.getAllowedHeaders());
-        config.setAllowCredentials(corsProperties.isAllowCredentials());
+        config.setAllowedOriginPatterns(List.of("http://localhost:5173")); // or use .setAllowedOrigins if preferred
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setAllowCredentials(true); // Important for cookies/session-based auth
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
