@@ -3,11 +3,13 @@ package com.seooptimizer.backend.config;
 import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
 
-import lombok.Data;
+import lombok.Data; // Assuming Lombok is being used for getters/setters
 
 @Data
-@ConfigurationProperties(prefix = "cors")
+@Configuration // To ensure Spring registers this as a configuration bean
+@ConfigurationProperties(prefix = "spring.web.cors") // Matches the YAML structure
 public class CorsConfig {
     private List<String> allowedOrigins;
     private List<String> allowedMethods;
