@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import lombok.Data; // Assuming Lombok is being used for getters/setters
 
 @Data
-@Configuration // To ensure Spring registers this as a configuration bean
+// @Configuration // To ensure Spring registers this as a configuration bean
 @ConfigurationProperties(prefix = "spring.web.cors") // Matches the YAML structure
 public class CorsConfig {
     private List<String> allowedOrigins;
