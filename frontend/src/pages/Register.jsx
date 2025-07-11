@@ -10,6 +10,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { registerUser } from "@/api/auth"; 
 
 const registrationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -22,6 +23,7 @@ const checkPasswordStrength = (password) => ({
   hasUppercase: /[A-Z]/.test(password),
   hasLowercase: /[a-z]/.test(password),
   hasNumber: /\d/.test(password),
+  // eslint-disable-next-line no-useless-escape
   hasSymbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
 });
 
@@ -122,17 +124,22 @@ const Register = () => {
   const password = watch("password", "");
 
   const onSubmit = async (data) => {
-    setIsLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      console.log("Registration data:", data);
-      navigate("/verify-email");
-    } catch (error) {
-      console.error("Registration failed:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  setIsLoading(true);
+  try {
+    const result = await registerUser({
+      name: data.name,
+      email: data.email,
+      password: data.password,
+    });
+    console.log("Registered successfully:", result);
+    navigate("/verify-email");
+  } catch (error) {
+    console.error("Registration failed:", error.response?.data || error.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

@@ -10,6 +10,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { loginUser } from "@/api/auth"; 
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -63,34 +64,15 @@ const Login = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     setLoginError(null);
-
     try {
-      // Call the backend login endpoint
-      const response = await fetch("https://ai-optimizer.onrender.com/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-        }),
-        credentials: 'include'
-      });
-
-      console.log("Login response:", response);
-
-      if (!response.ok) {
-        throw new Error("Invalid credentials");
-      }
-
-     const result = await response.json();
-     localStorage.setItem("token", result.token); // If your backend returns a token
-     navigate("/dashboard");
+      const result = await loginUser(data.email, data.password);
+      localStorage.setItem("token", result.token); // or any field your backend returns
+      navigate("/dashboard");
     } catch (error) {
       setLoginError("Incorrect email or password. Please try again.");
       setError("email", { type: "manual", message: "" });
       setError("password", { type: "manual", message: "" });
+      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -106,6 +88,7 @@ const Login = () => {
       navigate("/dashboard");
     } catch (error) {
       setLoginError("Google login failed. Please try again.");
+      console.error("Google login error:", error);
     } finally {
       setIsGoogleLoading(false);
     }
