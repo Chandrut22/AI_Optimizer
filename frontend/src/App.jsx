@@ -5,7 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import Homepage from './pages/Homepage';
 import LoginPage from './pages/Login';
 import RegisterPage from './pages/Register';
-
+import EmailVerificationPage from './pages/EmailVerification';
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -18,6 +18,7 @@ const App = () => {
                         <Route path='/' element={<Homepage />} />
                         <Route path='/login' element={<LoginPage />} />
                         <Route path='/register' element={<RegisterPage />} />
+                        <Route path='/verify-email' element={<EmailVerificationPage />} />
                     </Routes>
                 </BrowserRouter>
             </ThemeProvider>
