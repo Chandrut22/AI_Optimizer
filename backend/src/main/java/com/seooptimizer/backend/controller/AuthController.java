@@ -256,4 +256,31 @@ public class AuthController {
         return ResponseEntity.ok("Visit Tracked");
     }
 
+    @PostMapping("/resend-verification-code")
+    public ResponseEntity<?> resendVerificationCode(@RequestParam String email) {
+        Optional<User> optionalUser = userRepository.findByEmail(email);
+        if (optionalUser.isEmpty()) {
+            return new ResponseEntity<>(new ApiResponse(404, "User not found"), HttpStatus.NOT_FOUND);
+        }
+
+        User user = optionalUser.get();
+
+        if (user.isEnabled()) {
+            return new ResponseEntity<>(new ApiResponse(400, "User already verified"), HttpStatus.BAD_REQUEST);
+        }
+
+        String newCode = generateVerificationCode();
+        user.setVerificationCode(newCode);
+        userRepository.save(user);
+
+        try {
+            emailService.sendVerificationEmail("Resend Verification Code", user.getEmail(), user.getName(), newCode);
+        } catch (Exception e) {
+            return new ResponseEntity<>(new ApiResponse(500, "Failed to send verification email"), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        return new ResponseEntity<>(new ApiResponse(200, "Verification code resent to your email"), HttpStatus.OK);
+    }
+
+
 }

@@ -13,9 +13,7 @@ const Footer = () => {
               to="/"
               className="inline-flex items-center space-x-2 group mb-3"
             >
-              <div className="w-8 h-8 bg-linear-to-r from-primary to-blue-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                <Sparkles className="h-5 w-5 text-white" />
-              </div>
+              <img className="w-8 h-8" src="/favicon/favicon.svg" alt="Logo" />
               <span className="font-bold text-xl font-inter text-foreground group-hover:text-primary transition-colors duration-200">
                 AI Optimizer
               </span>
