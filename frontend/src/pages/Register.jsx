@@ -118,26 +118,51 @@ const Register = () => {
     handleSubmit,
     watch,
     formState: { errors },
+    setError,
   } = useForm({ resolver: zodResolver(registrationSchema), mode: "onChange" });
 
   const password = watch("password", "");
 
   const onSubmit = async (data) => {
-    setIsLoading(true);
-    try {
-      const result = await registerUser({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-      });
-      console.log("Registration successful:", result);
+  setIsLoading(true);
+
+  try {
+    const result = await registerUser({
+      name: data.name,
+      email: data.email,
+      password: data.password,
+    });
+
+    // Assuming backend returns a structured object with "code" and "message"
+    if (result.code === 200) {
       navigate("/verify-email", { state: { email: data.email } });
-    } catch (error) {
-      console.error("Registration failed:", error.response?.data || error.message);
-    } finally {
-      setIsLoading(false);
+    } else {
+      // This branch may never hit if HTTP status is already 400/500
+      console.error("Unexpected response:", result.message);
     }
-  };
+  } catch (error) {
+    setIsLoading(false);
+
+    const message = error.response?.data?.message || "Something went wrong. Please try again.";
+
+    if (message.includes("Invalid email")) {
+      setError("email", { type: "manual", message: "Invalid email format" });
+    } else if (message.includes("Password must")) {
+      setError("password", { type: "manual", message });
+    } else if (message.includes("Email already exists")) {
+      setError("email", { type: "manual", message: "This email is already registered" });
+    } else if (message.includes("Failed to send verification email")) {
+      alert("Registration successful, but verification email failed. Contact support.");
+    } else {
+      alert(message);
+    }
+
+    console.error("Registration failed:", message);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -62,21 +63,46 @@ const Login = () => {
   });
 
   const onSubmit = async (data) => {
-    setIsLoading(true);
-    setLoginError(null);
-    try {
-      const result = await loginUser(data.email, data.password);
-      localStorage.setItem("token", result.token); // or any field your backend returns
-      navigate("/dashboard");
-    } catch (error) {
-      setLoginError("Incorrect email or password. Please try again.");
-      setError("email", { type: "manual", message: "" });
-      setError("password", { type: "manual", message: "" });
-      console.error("Login error:", error);
-    } finally {
-      setIsLoading(false);
+  setIsLoading(true);
+  setLoginError(null);
+
+  try {
+    const result = await loginUser(data.email, data.password);
+
+    // Store the tokens (you might want to use httpOnly cookies instead for better security)
+    localStorage.setItem("accessToken", result.accessToken);
+    localStorage.setItem("refreshToken", result.refreshToken);
+
+    navigate("/dashboard");
+  } catch (error) {
+    setIsLoading(false);
+
+    // Handle backend-defined error response
+    if (error.response) {
+      const { status, data } = error.response;
+
+      if (status === 404) {
+        setLoginError("User not found.");
+        setError("email", { type: "manual", message: "" });
+      } else if (status === 403) {
+        setLoginError("Please verify your email before logging in.");
+        setError("email", { type: "manual", message: "" });
+      } else if (status === 401) {
+        setLoginError("Incorrect email or password.");
+        setError("email", { type: "manual", message: "" });
+        setError("password", { type: "manual", message: "" });
+      } else {
+        setLoginError("Something went wrong. Please try again later.");
+      }
+    } else {
+      // Fallback for unknown error (e.g., network issue)
+      setLoginError("Network error. Please check your internet connection.");
     }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);

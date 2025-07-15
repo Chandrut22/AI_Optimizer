@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,12 +11,14 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { resendVerificationCode, verifyEmail } from "@/api/auth";
+
+
 
 const verificationSchema = z.object({
   code: z
@@ -127,42 +130,65 @@ const EmailVerification = () => {
     if (verificationCode) clearErrors("code");
   }, [verificationCode, clearErrors]);
 
-  const onSubmit = async (data) => {
-    setIsLoading(true);
-    try {
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          data.code === "123456" ? resolve(true) : reject(new Error("Invalid code"));
-        }, 2000);
-      });
-      setIsSuccess(true);
-      setTimeout(() => {
-        navigate(isPasswordReset ? "/reset-password" : "/dashboard", {
-          state: isPasswordReset ? { email: userEmail, verifiedCode: data.code } : undefined,
-        });
-      }, 2000);
-    } catch (error) {
-      setError("code", { type: "manual", message: "Invalid verification code. Please try again." });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handleResendCode = async () => {
-    if (resendCooldown > 0) return;
-    setResendLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setResendCooldown(60);
-      clearErrors("code");
-      setVerificationCode("");
-      console.log("Verification code sent to:", userEmail);
-    } catch {
-      console.error("Failed to resend code");
-    } finally {
-      setResendLoading(false);
+const onSubmit = async (data) => {
+  setIsLoading(true);
+  try {
+    const result = await verifyEmail({
+      email: userEmail, // ensure userEmail is defined properly
+      code: data.code,
+    });
+
+    console.log("Email verified successfully:", result);
+    setIsSuccess(true);
+
+    setTimeout(() => {
+      navigate(isPasswordReset ? "/reset-password" : "/login", {
+        state: isPasswordReset
+          ? { email: userEmail, verifiedCode: data.code }
+          : undefined,
+      });
+    }, 2000);
+  } catch (error) {
+    const message = error.response?.data?.message || "Something went wrong";
+
+    if (message.includes("Invalid email")) {
+      setError("code", { type: "manual", message: "Email does not exist." });
+    } else if (message.includes("Invalid verification code")) {
+      setError("code", { type: "manual", message: "Invalid verification code. Please try again." });
+    } else {
+      setError("code", { type: "manual", message });
     }
-  };
+
+    console.error("Verification failed:", message);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+const handleResendCode = async () => {
+  try {
+    const result = await resendVerificationCode(userEmail);
+    console.log("Verification code resent:", result);
+    alert("A new verification code has been sent to your email.");
+  } catch (error) {
+    const message = error.response?.data?.message || "Failed to resend verification code.";
+
+    if (message.includes("User not found")) {
+      alert("Email not found. Please check and try again.");
+    } else if (message.includes("User already verified")) {
+      alert("Your email is already verified. You can log in directly.");
+    } else if (message.includes("Failed to send verification email")) {
+      alert("Error sending email. Please try again later.");
+    } else {
+      alert(message);
+    }
+
+    console.error("Resend code error:", message);
+  }
+};
+
 
   const isFormValid = verificationCode.length === 6;
 
