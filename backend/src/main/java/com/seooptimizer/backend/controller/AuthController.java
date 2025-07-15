@@ -1,7 +1,9 @@
 package com.seooptimizer.backend.controller;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -41,29 +43,17 @@ import jakarta.servlet.http.HttpServletResponse;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+    @Autowired private AuthenticationManager authenticationManager;
+    @Autowired private UserRepository userRepository;
+    @Autowired private CustomerUserDetailsService userDetailsService;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private EmailService emailService;
+    @Autowired private RefreshTokenService refreshTokenService;
+    @Autowired private UserService userService;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final Map<String, Boolean> resetCodeVerifiedMap = new ConcurrentHashMap<>();
 
-    @Autowired
-    private CustomerUserDetailsService userDetailsService;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private EmailService emailService;
-
-    @Autowired
-    private RefreshTokenService refreshTokenService;
-
-    @Autowired
-    private UserService userService;
 
     private boolean isStrongPassword(String password) {
         String passwordRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
@@ -79,20 +69,20 @@ public class AuthController {
         return String.valueOf((int) (Math.random() * 900000) + 100000);
     }
 
+
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         if (!isValidEmail(request.getEmail())) {
-            return new ResponseEntity<>(new ApiResponse(400, "Invalid email format"), HttpStatus.BAD_REQUEST);
+            return ResponseEntity.badRequest().body(new ApiResponse(400, "Invalid email format"));
         }
 
         if (!isStrongPassword(request.getPassword())) {
-            return new ResponseEntity<>(new ApiResponse(400,
-                    "Password must be at least 8 characters long, contain an uppercase letter, a lowercase letter, a digit, and a special character"),
-                    HttpStatus.BAD_REQUEST);
+            return ResponseEntity.badRequest().body(new ApiResponse(400,
+                    "Password must be at least 8 characters, with uppercase, lowercase, digit, and special character"));
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            return new ResponseEntity<>(new ApiResponse(400, "Email already exists"), HttpStatus.BAD_REQUEST);
+            return ResponseEntity.badRequest().body(new ApiResponse(400, "Email already exists"));
         }
 
         String code = generateVerificationCode();
@@ -112,14 +102,12 @@ public class AuthController {
         try {
             emailService.sendVerificationEmail("Email Verification", request.getEmail(), request.getName(), code);
         } catch (Exception e) {
-            return new ResponseEntity<>(new ApiResponse(500, "Failed to send verification email"),
-                    HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(new ApiResponse(500, "Failed to send verification email"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        return new ResponseEntity<>(new ApiResponse(200,
-                "Registration successful. Please check your email for verification code."),
-                HttpStatus.OK);
+        return ResponseEntity.ok(new ApiResponse(200, "Registration successful. Please check your email for the verification code."));
     }
+
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
@@ -131,25 +119,23 @@ public class AuthController {
         User user = optionalUser.get();
 
         if (!user.isEnabled()) {
-            return new ResponseEntity<>(new ApiResponse(403, "Please verify your email first."),
-                    HttpStatus.FORBIDDEN);
+            return new ResponseEntity<>(new ApiResponse(403, "Please verify your email first."), HttpStatus.FORBIDDEN);
         }
 
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         } catch (Exception e) {
-            return new ResponseEntity<>(new ApiResponse(401, "Invalid email or password"),
-                    HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>(new ApiResponse(401, "Invalid email or password"), HttpStatus.UNAUTHORIZED);
         }
 
-        final UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
-        final String accessToken = jwtUtil.generateAccessToken(userDetails.getUsername());
-        final RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getEmail());
+        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
+        String accessToken = jwtUtil.generateAccessToken(userDetails.getUsername());
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getEmail());
 
         return ResponseEntity.ok(new JwtResponse(accessToken, refreshToken.getToken()));
     }
-    // Only the relevant part inside @PostMapping("/refresh-token")
+
 
     @PostMapping("/refresh-token")
     public ResponseEntity<?> refreshToken(HttpServletRequest request) {
@@ -160,22 +146,22 @@ public class AuthController {
         }
 
         String email = jwtUtil.extractUsername(oldRefreshToken);
-
-        // Create new tokens
         String newAccessToken = jwtUtil.generateAccessToken(email);
         String newRefreshToken = jwtUtil.rotateRefreshToken(email);
 
-        refreshTokenService.deleteByToken(oldRefreshToken); // Optional cleanup
-        refreshTokenService.saveToken(email, newRefreshToken); // You need this method in service
+        refreshTokenService.deleteByToken(oldRefreshToken);
+        refreshTokenService.saveToken(email, newRefreshToken);
 
         return ResponseEntity.ok(new JwtResponse(newAccessToken, newRefreshToken));
     }
+
+    // -------------------------- Email Verification --------------------------
 
     @PostMapping("/verify")
     public ResponseEntity<?> verifyCode(@RequestParam String email, @RequestParam String code) {
         Optional<User> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {
-            return new ResponseEntity<>(new ApiResponse(400, "Invalid email"), HttpStatus.BAD_REQUEST);
+            return ResponseEntity.badRequest().body(new ApiResponse(400, "Invalid email"));
         }
 
         User user = optionalUser.get();
@@ -183,13 +169,12 @@ public class AuthController {
             user.setEnabled(true);
             user.setVerificationCode(null);
             userRepository.save(user);
-            return new ResponseEntity<>(new ApiResponse(200, "Email verified. You can now login."),
-                    HttpStatus.OK);
+            return ResponseEntity.ok(new ApiResponse(200, "Email verified. You can now login."));
         } else {
-            return new ResponseEntity<>(new ApiResponse(400, "Invalid verification code"),
-                    HttpStatus.BAD_REQUEST);
+            return ResponseEntity.badRequest().body(new ApiResponse(400, "Invalid verification code"));
         }
     }
+
 
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestParam String email) {
@@ -213,8 +198,8 @@ public class AuthController {
         return ResponseEntity.ok(new ApiResponse(200, "Password reset code sent to email"));
     }
 
-    @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@RequestParam String email, @RequestParam String code, @RequestParam String newPassword) {
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<?> verifyResetCode(@RequestParam String email, @RequestParam String code) {
         Optional<User> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(404, "User not found"));
@@ -227,18 +212,38 @@ public class AuthController {
         }
 
         if (user.getResetCodeGeneratedAt() == null ||
-            user.getResetCodeGeneratedAt().plusMinutes(15).isBefore(LocalDateTime.now())) {
+                user.getResetCodeGeneratedAt().plusMinutes(15).isBefore(LocalDateTime.now())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse(400, "Reset code expired or invalid"));
         }
 
+        resetCodeVerifiedMap.put(email, true);
+        return ResponseEntity.ok(new ApiResponse(200, "Reset code verified. You can now reset your password."));
+    }
+
+    @PostMapping("/set-new-password")
+    public ResponseEntity<?> setNewPassword(@RequestParam String email, @RequestParam String newPassword) {
+        Boolean isVerified = resetCodeVerifiedMap.get(email);
+        if (isVerified == null || !isVerified) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse(403, "Reset code not verified. Please verify it first."));
+        }
+
+        Optional<User> optionalUser = userRepository.findByEmail(email);
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(404, "User not found"));
+        }
+
+        User user = optionalUser.get();
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setResetCode(null);
         user.setResetCodeGeneratedAt(null);
         userRepository.save(user);
+        resetCodeVerifiedMap.remove(email);
 
         return ResponseEntity.ok(new ApiResponse(200, "Password has been successfully reset"));
     }
+
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
@@ -249,6 +254,7 @@ public class AuthController {
         SecurityContextHolder.clearContext();
         return ResponseEntity.ok(new ApiResponse(200, "Logged out successfully"));
     }
+
 
     @GetMapping("/visit")
     public ResponseEntity<String> logVisit(@RequestParam Long userId) {
@@ -279,8 +285,6 @@ public class AuthController {
             return new ResponseEntity<>(new ApiResponse(500, "Failed to send verification email"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        return new ResponseEntity<>(new ApiResponse(200, "Verification code resent to your email"), HttpStatus.OK);
+        return ResponseEntity.ok(new ApiResponse(200, "Verification code resent to your email"));
     }
-
-
 }
