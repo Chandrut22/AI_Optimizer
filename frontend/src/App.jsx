@@ -6,6 +6,7 @@ import Homepage from './pages/Homepage';
 import LoginPage from './pages/Login';
 import RegisterPage from './pages/Register';
 import EmailVerificationPage from './pages/EmailVerification';
+import ForgotPasswordPage from './pages/ForgotPassword';
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -19,6 +20,9 @@ const App = () => {
                         <Route path='/login' element={<LoginPage />} />
                         <Route path='/register' element={<RegisterPage />} />
                         <Route path='/verify-email' element={<EmailVerificationPage />} />
+                        <Route path='/forgot-password' element={<ForgotPasswordPage />} />
+
+
                     </Routes>
                 </BrowserRouter>
             </ThemeProvider>

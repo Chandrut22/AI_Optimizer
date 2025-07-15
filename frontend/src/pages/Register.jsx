@@ -134,7 +134,7 @@ const Register = () => {
     });
 
     // Assuming backend returns a structured object with "code" and "message"
-    if (result.code === 200) {
+    if (result.status === 200) {
       navigate("/verify-email", { state: { email: data.email } });
     } else {
       // This branch may never hit if HTTP status is already 400/500

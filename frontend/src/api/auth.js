@@ -23,10 +23,16 @@ export const registerUser = async ({ name, email, password }) => {
 };
 
 export const verifyEmail = async ({ email, code }) => {
-  const response = await API.post("/auth/verify", {
-    email,
-    code,
+  const formData = new FormData();
+  formData.append("email", email);
+  formData.append("code", code);
+
+  const response = await API.post("/auth/verify", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
   });
+
   return response.data;
 };
 
@@ -34,5 +40,12 @@ export const resendVerificationCode = async (email) => {
   const response = await API.post(`/auth/resend-verification-code`, null, {
     params: { email },
   });
+  return response.data;
+};
+
+export const forgotPassword = async (email) => {
+  const formData = new FormData();
+  formData.append("email", email);
+  const response = await API.post("/auth/forgot-password", formData);
   return response.data;
 };

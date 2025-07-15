@@ -18,8 +18,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { resendVerificationCode, verifyEmail } from "@/api/auth";
 
-
-
 const verificationSchema = z.object({
   code: z
     .string()
@@ -45,7 +43,8 @@ const VerificationCodeInput = ({ value, onChange, error }) => {
     newCodes[index] = newValue;
     setCodes(newCodes);
 
-    onChange(newCodes.join(""));
+    const fullCode = newCodes.join("");
+    onChange(fullCode);
 
     if (newValue && index < 5) {
       inputRefs.current[index + 1]?.focus();
@@ -113,6 +112,7 @@ const EmailVerification = () => {
     handleSubmit,
     setError,
     clearErrors,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(verificationSchema),
@@ -130,65 +130,69 @@ const EmailVerification = () => {
     if (verificationCode) clearErrors("code");
   }, [verificationCode, clearErrors]);
 
-
-const onSubmit = async (data) => {
-  setIsLoading(true);
-  try {
-    const result = await verifyEmail({
-      email: userEmail, // ensure userEmail is defined properly
-      code: data.code,
-    });
-
-    console.log("Email verified successfully:", result);
-    setIsSuccess(true);
-
-    setTimeout(() => {
-      navigate(isPasswordReset ? "/reset-password" : "/login", {
-        state: isPasswordReset
-          ? { email: userEmail, verifiedCode: data.code }
-          : undefined,
+  const onSubmit = async (data) => {
+    setIsLoading(true);
+    try {
+      const result = await verifyEmail({
+        email: userEmail,
+        code: data.code,
       });
-    }, 2000);
-  } catch (error) {
-    const message = error.response?.data?.message || "Something went wrong";
 
-    if (message.includes("Invalid email")) {
-      setError("code", { type: "manual", message: "Email does not exist." });
-    } else if (message.includes("Invalid verification code")) {
-      setError("code", { type: "manual", message: "Invalid verification code. Please try again." });
-    } else {
-      setError("code", { type: "manual", message });
+      console.log("Email verified successfully:", result);
+      setIsSuccess(true);
+
+      setTimeout(() => {
+        navigate(isPasswordReset ? "/reset-password" : "/login", {
+          state: isPasswordReset
+            ? { email: userEmail, verifiedCode: data.code }
+            : undefined,
+        });
+      }, 2000);
+    } catch (error) {
+      const message = error.response?.data?.message || "Something went wrong";
+
+      if (message.includes("Invalid email")) {
+        setError("code", { type: "manual", message: "Email does not exist." });
+      } else if (message.includes("Invalid verification code")) {
+        setError("code", {
+          type: "manual",
+          message: "Invalid verification code. Please try again.",
+        });
+      } else {
+        setError("code", { type: "manual", message });
+      }
+
+      console.error("Verification failed:", message);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    console.error("Verification failed:", message);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  const handleResendCode = async () => {
+    try {
+      setResendLoading(true);
+      const result = await resendVerificationCode(userEmail);
+      console.log("Verification code resent:", result);
+      alert("A new verification code has been sent to your email.");
+      setResendCooldown(60);
+    } catch (error) {
+      const message = error.response?.data?.message || "Failed to resend verification code.";
 
+      if (message.includes("User not found")) {
+        alert("Email not found. Please check and try again.");
+      } else if (message.includes("User already verified")) {
+        alert("Your email is already verified. You can log in directly.");
+      } else if (message.includes("Failed to send verification email")) {
+        alert("Error sending email. Please try again later.");
+      } else {
+        alert(message);
+      }
 
-const handleResendCode = async () => {
-  try {
-    const result = await resendVerificationCode(userEmail);
-    console.log("Verification code resent:", result);
-    alert("A new verification code has been sent to your email.");
-  } catch (error) {
-    const message = error.response?.data?.message || "Failed to resend verification code.";
-
-    if (message.includes("User not found")) {
-      alert("Email not found. Please check and try again.");
-    } else if (message.includes("User already verified")) {
-      alert("Your email is already verified. You can log in directly.");
-    } else if (message.includes("Failed to send verification email")) {
-      alert("Error sending email. Please try again later.");
-    } else {
-      alert(message);
+      console.error("Resend code error:", message);
+    } finally {
+      setResendLoading(false);
     }
-
-    console.error("Resend code error:", message);
-  }
-};
-
+  };
 
   const isFormValid = verificationCode.length === 6;
 
@@ -207,7 +211,9 @@ const handleResendCode = async () => {
                   {isPasswordReset ? "Code Verified Successfully!" : "Email Verified Successfully!"}
                 </h1>
                 <p className="text-muted-foreground mb-6">
-                  {isPasswordReset ? "Reset code verified. Set a new password." : "Redirecting to dashboard..."}
+                  {isPasswordReset
+                    ? "Reset code verified. Set a new password."
+                    : "Redirecting to login..."}
                 </p>
                 <div className="flex justify-center">
                   <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
@@ -229,7 +235,7 @@ const handleResendCode = async () => {
                       {isPasswordReset ? "Enter Reset Code" : "Verify Your Email"}
                     </h1>
                     <p className="text-muted-foreground text-sm mt-2">
-                      {(customMessage || (isPasswordReset ? "We sent a reset code to" : "We sent a verification code to"))}
+                      {customMessage || (isPasswordReset ? "We sent a reset code to" : "We sent a verification code to")}
                     </p>
                     <p className="font-medium text-lg mt-1">{userEmail}</p>
                   </div>
@@ -238,14 +244,16 @@ const handleResendCode = async () => {
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-[#111827] dark:text-[#F8FAFC] block text-center">
-                        Verification Code
+                      Verification Code
                     </Label>
                     <VerificationCodeInput
                       value={verificationCode}
-                      onChange={setVerificationCode}
+                      onChange={(val) => {
+                        setVerificationCode(val);
+                        setValue("code", val); // ✅ fix: update form value
+                      }}
                       error={!!errors.code}
                     />
-                    <input type="hidden" {...register("code")} value={verificationCode} />
                     {errors.code && (
                       <p className="text-xs text-red-500 mt-2 flex items-center justify-center gap-2">
                         <AlertCircle className="h-3 w-3" /> {errors.code.message}
@@ -296,7 +304,7 @@ const handleResendCode = async () => {
 
                 <div className="mt-6 text-center">
                   <p className="text-xs text-muted-foreground">
-                    Having trouble? Check your spam folder or {" "}
+                    Having trouble? Check your spam folder or{" "}
                     <Link to="/contact" className="text-primary hover:underline">
                       contact support
                     </Link>
