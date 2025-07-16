@@ -226,6 +226,29 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/set-new-password")
+    public ResponseEntity<?> setNewPassword(@RequestParam String email, @RequestParam String newPassword) {
+        Boolean isVerified = resetCodeVerifiedMap.get(email);
+        if (isVerified == null || !isVerified) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse(403, "Reset code not verified. Please verify it first."));
+        }
+
+        Optional<User> optionalUser = userRepository.findByEmail(email);
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(404, "User not found"));
+        }
+
+        User user = optionalUser.get();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setResetCode(null);
+        user.setResetCodeGeneratedAt(null);
+        userRepository.save(user);
+        resetCodeVerifiedMap.remove(email);
+
+        return ResponseEntity.ok(new ApiResponse(200, "Password has been successfully reset"));
+    }
+
 
 
     @PostMapping("/logout")
