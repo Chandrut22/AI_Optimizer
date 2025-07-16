@@ -155,26 +155,6 @@ public class AuthController {
         return ResponseEntity.ok(new JwtResponse(newAccessToken, newRefreshToken));
     }
 
-    // -------------------------- Email Verification --------------------------
-
-    @PostMapping("/verify")
-    public ResponseEntity<?> verifyCode(@RequestParam String email, @RequestParam String code) {
-        Optional<User> optionalUser = userRepository.findByEmail(email);
-        if (optionalUser.isEmpty()) {
-            return ResponseEntity.badRequest().body(new ApiResponse(400, "Invalid email"));
-        }
-
-        User user = optionalUser.get();
-        if (user.getVerificationCode() != null && user.getVerificationCode().equals(code)) {
-            user.setEnabled(true);
-            user.setVerificationCode(null);
-            userRepository.save(user);
-            return ResponseEntity.ok(new ApiResponse(200, "Email verified. You can now login."));
-        } else {
-            return ResponseEntity.badRequest().body(new ApiResponse(400, "Invalid verification code"));
-        }
-    }
-
 
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestParam String email) {
@@ -198,51 +178,54 @@ public class AuthController {
         return ResponseEntity.ok(new ApiResponse(200, "Password reset code sent to email"));
     }
 
-    @PostMapping("/verify-reset-code")
-    public ResponseEntity<?> verifyResetCode(@RequestParam String email, @RequestParam String code) {
+    @PostMapping("/verify-code")
+    public ResponseEntity<?> verifyGenericCode(
+            @RequestParam String email,
+            @RequestParam String code,
+            @RequestParam String type) {
+
         Optional<User> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(404, "User not found"));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse(404, "User not found"));
         }
 
         User user = optionalUser.get();
 
-        if (user.getResetCode() == null || !user.getResetCode().equals(code)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(400, "Invalid reset code"));
-        }
+        switch (type.toLowerCase()) {
+            case "register":
+                if (user.getVerificationCode() == null || !user.getVerificationCode().equals(code)) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(new ApiResponse(400, "Invalid verification code"));
+                }
 
-        if (user.getResetCodeGeneratedAt() == null ||
-                user.getResetCodeGeneratedAt().plusMinutes(15).isBefore(LocalDateTime.now())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse(400, "Reset code expired or invalid"));
-        }
+                user.setEnabled(true);
+                user.setVerificationCode(null);
+                userRepository.save(user);
 
-        resetCodeVerifiedMap.put(email, true);
-        return ResponseEntity.ok(new ApiResponse(200, "Reset code verified. You can now reset your password."));
+                return ResponseEntity.ok(new ApiResponse(200, "Email verified. You can now login."));
+
+            case "reset":
+                if (user.getResetCode() == null || !user.getResetCode().equals(code)) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(new ApiResponse(400, "Invalid reset code"));
+                }
+
+                if (user.getResetCodeGeneratedAt() == null ||
+                        user.getResetCodeGeneratedAt().plusMinutes(15).isBefore(LocalDateTime.now())) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(new ApiResponse(400, "Reset code expired or invalid"));
+                }
+
+                resetCodeVerifiedMap.put(email, true);
+                return ResponseEntity.ok(new ApiResponse(200, "Reset code verified. You can now reset your password."));
+
+            default:
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiResponse(400, "Invalid verification type"));
+        }
     }
 
-    @PostMapping("/set-new-password")
-    public ResponseEntity<?> setNewPassword(@RequestParam String email, @RequestParam String newPassword) {
-        Boolean isVerified = resetCodeVerifiedMap.get(email);
-        if (isVerified == null || !isVerified) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse(403, "Reset code not verified. Please verify it first."));
-        }
-
-        Optional<User> optionalUser = userRepository.findByEmail(email);
-        if (optionalUser.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(404, "User not found"));
-        }
-
-        User user = optionalUser.get();
-        user.setPassword(passwordEncoder.encode(newPassword));
-        user.setResetCode(null);
-        user.setResetCodeGeneratedAt(null);
-        userRepository.save(user);
-        resetCodeVerifiedMap.remove(email);
-
-        return ResponseEntity.ok(new ApiResponse(200, "Password has been successfully reset"));
-    }
 
 
     @PostMapping("/logout")
@@ -262,29 +245,29 @@ public class AuthController {
         return ResponseEntity.ok("Visit Tracked");
     }
 
-    @PostMapping("/resend-verification-code")
-    public ResponseEntity<?> resendVerificationCode(@RequestParam String email) {
+    @PostMapping("/resend-reset-code")
+    public ResponseEntity<?> resendResetCode(@RequestParam String email) {
         Optional<User> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {
-            return new ResponseEntity<>(new ApiResponse(404, "User not found"), HttpStatus.NOT_FOUND);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse(404, "User not found"));
         }
 
         User user = optionalUser.get();
 
-        if (user.isEnabled()) {
-            return new ResponseEntity<>(new ApiResponse(400, "User already verified"), HttpStatus.BAD_REQUEST);
-        }
-
         String newCode = generateVerificationCode();
-        user.setVerificationCode(newCode);
+        user.setResetCode(newCode);
+        user.setResetCodeGeneratedAt(LocalDateTime.now());
         userRepository.save(user);
 
         try {
-            emailService.sendVerificationEmail("Resend Verification Code", user.getEmail(), user.getName(), newCode);
+            emailService.sendVerificationEmail("Password Reset Code", user.getEmail(), user.getName(), newCode);
         } catch (Exception e) {
-            return new ResponseEntity<>(new ApiResponse(500, "Failed to send verification email"), HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse(500, "Failed to send reset code email"));
         }
 
-        return ResponseEntity.ok(new ApiResponse(200, "Verification code resent to your email"));
+        return ResponseEntity.ok(new ApiResponse(200, "Reset code resent to your email"));
     }
+
 }
