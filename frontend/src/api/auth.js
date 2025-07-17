@@ -6,10 +6,7 @@ const API = axios.create({
 });
 
 export const loginUser = async (email, password) => {
-  const response = await API.post("/auth/login", {
-    email,
-    password,
-  });
+  const response = await API.post("/auth/login", { email, password });
   return response.data;
 };
 
@@ -22,12 +19,13 @@ export const registerUser = async ({ name, email, password }) => {
   return response.data;
 };
 
-export const verifyEmail = async ({ email, code }) => {
+export const verifyEmailCode = async ({ email, code, type }) => {
   const formData = new FormData();
   formData.append("email", email);
   formData.append("code", code);
+  formData.append("type", type); // "register" or "reset"
 
-  const response = await API.post("/auth/verify", formData, {
+  const response = await API.post("/auth/verify-code", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -37,7 +35,7 @@ export const verifyEmail = async ({ email, code }) => {
 };
 
 export const resendVerificationCode = async (email) => {
-  const response = await API.post(`/auth/resend-verification-code`, null, {
+  const response = await API.post(`/auth/resend-reset-code`, null, {
     params: { email },
   });
   return response.data;
@@ -46,6 +44,26 @@ export const resendVerificationCode = async (email) => {
 export const forgotPassword = async (email) => {
   const formData = new FormData();
   formData.append("email", email);
-  const response = await API.post("/auth/forgot-password", formData);
+
+  const response = await API.post("/auth/forgot-password", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data;
+};
+
+export const setNewPassword = async ({ email, newPassword }) => {
+  const formData = new FormData();
+  formData.append("email", email);
+  formData.append("newPassword", newPassword);
+
+  const response = await API.post("/auth/set-new-password", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
   return response.data;
 };

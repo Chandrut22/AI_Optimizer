@@ -40,33 +40,26 @@ const onSubmit = async (data) => {
   setErrorMessage(null);
 
   try {
-    const res = await forgotPassword(data.email);
+    await forgotPassword(data.email);
 
-    if (res.status === 200) {
-      navigate("/verify-email", {
-        state: {
-          email: data.email,
-          type: "password-reset",
-          message: res.message || "Reset code sent to your email. Please check your inbox.",
-        },
-      });
-    }
+    navigate("/verify-email", {
+      state: {
+        email: data.email,
+        type: "password-reset",
+        message: "Reset code sent to your email. Please check your inbox.",
+      },
+    });
   } catch (error) {
-    const status = error.response?.status;
-    const message =
-      error.response?.data?.message || "Something went wrong. Please try again.";
-
-    if (status === 404) {
+    if (error.response?.status === 404) {
       setErrorMessage("This email is not registered.");
-    } else if (status === 500) {
-      setErrorMessage("Failed to send verification email. Please try again.");
     } else {
-      setErrorMessage(message);
+      setErrorMessage("Failed to send reset code. Please try again.");
     }
   } finally {
     setIsLoading(false);
   }
 };
+
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0F172A] flex flex-col">
@@ -74,6 +67,7 @@ const onSubmit = async (data) => {
       <main className="flex-1 flex items-center justify-center p-4 py-24">
         <div className="w-full max-w-md">
           <div className="bg-[#FFFFFF] dark:bg-[#1E293B] border border-[#D1D5DB] dark:border-[#475569] rounded-xl shadow-lg p-8">
+            {/* Header */}
             <div className="text-center mb-8">
               <div className="flex justify-between items-center mb-6">
                 <Link
@@ -96,6 +90,7 @@ const onSubmit = async (data) => {
               </p>
             </div>
 
+            {/* Error Message */}
             {errorMessage && (
               <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                 <div className="flex items-center gap-2 text-sm text-red-700 dark:text-red-400">
@@ -105,7 +100,9 @@ const onSubmit = async (data) => {
               </div>
             )}
 
+            {/* Reset Password Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Email Field */}
               <div className="space-y-2">
                 <Label
                   htmlFor="email"
@@ -134,6 +131,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Submit Button */}
               <Button
                 type="submit"
                 disabled={!email || isLoading}
@@ -155,6 +153,7 @@ const onSubmit = async (data) => {
               </Button>
             </form>
 
+            {/* Additional Help */}
             <div className="mt-6 text-center">
               <p className="text-xs text-[#6B7280] dark:text-[#94A3B8]">
                 Remember your password?{" "}
@@ -167,6 +166,7 @@ const onSubmit = async (data) => {
               </p>
             </div>
 
+            {/* Demo Instructions */}
             <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <div className="text-center">
                 <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-2">
@@ -180,6 +180,7 @@ const onSubmit = async (data) => {
             </div>
           </div>
 
+          {/* Additional Info */}
           <div className="mt-8 text-center">
             <p className="text-xs text-[#6B7280] dark:text-[#94A3B8]">
               Having trouble?{" "}

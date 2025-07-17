@@ -16,7 +16,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { resendVerificationCode, verifyEmail } from "@/api/auth";
+import { resendVerificationCode, verifyEmailCode } from "@/api/auth";
 
 const verificationSchema = z.object({
   code: z
@@ -132,13 +132,15 @@ const EmailVerification = () => {
 
   const onSubmit = async (data) => {
     setIsLoading(true);
+
     try {
-      const result = await verifyEmail({
+      const result = await verifyEmailCode({
         email: userEmail,
         code: data.code,
+        type: isPasswordReset ? "reset" : "register", // 👈 required for backend switch case
       });
 
-      console.log("Email verified successfully:", result);
+      console.log("Verification success:", result);
       setIsSuccess(true);
 
       setTimeout(() => {
@@ -149,14 +151,24 @@ const EmailVerification = () => {
         });
       }, 2000);
     } catch (error) {
-      const message = error.response?.data?.message || "Something went wrong";
+      const message = error?.response?.data?.message || "Something went wrong";
 
-      if (message.includes("Invalid email")) {
-        setError("code", { type: "manual", message: "Email does not exist." });
+      if (message.includes("User not found")) {
+        setError("code", { type: "manual", message: "User not found." });
       } else if (message.includes("Invalid verification code")) {
         setError("code", {
           type: "manual",
-          message: "Invalid verification code. Please try again.",
+          message: "Invalid code. Please check and try again.",
+        });
+      } else if (message.includes("Invalid reset code")) {
+        setError("code", {
+          type: "manual",
+          message: "Invalid reset code. Please try again.",
+        });
+      } else if (message.includes("Reset code expired")) {
+        setError("code", {
+          type: "manual",
+          message: "Reset code expired. Please request a new one.",
         });
       } else {
         setError("code", { type: "manual", message });
@@ -167,6 +179,7 @@ const EmailVerification = () => {
       setIsLoading(false);
     }
   };
+
 
   const handleResendCode = async () => {
     try {
