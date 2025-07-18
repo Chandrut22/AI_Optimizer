@@ -104,21 +104,10 @@ const Login = () => {
 };
 
 
-  const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true);
-    setLoginError(null);
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      console.log("Google login successful");
-      navigate("/dashboard");
-    } catch (error) {
-      setLoginError("Google login failed. Please try again.");
-      console.error("Google login error:", error);
-    } finally {
-      setIsGoogleLoading(false);
-    }
+  const handleGoogleLogin = () => {
+    window.location.href = "https://ai-optimizer.onrender.com/oauth2/authorization/google";
   };
+
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0F172A] flex flex-col">
