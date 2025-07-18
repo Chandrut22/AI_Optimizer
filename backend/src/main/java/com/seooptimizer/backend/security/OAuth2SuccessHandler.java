@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import com.seooptimizer.backend.model.User;
 import com.seooptimizer.backend.repository.UserRepository;
+import com.seooptimizer.backend.util.JwtUtil;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,7 +25,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
 
-    // Frontend URL where user is redirected after successful OAuth login
     private final String frontendUrl = "https://ai-optimizer-beta.vercel.app/oauth-success";
 
     @Override
@@ -33,21 +33,21 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         DefaultOAuth2User oauthUser = (DefaultOAuth2User) authentication.getPrincipal();
 
-        // Extract email from OAuth2 user
         String email = (String) oauthUser.getAttributes().get("email");
 
-        // Fetch user from DB to get the username
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found after OAuth login"));
 
-        // Generate JWT using username
-        String jwt = jwtUtil.generateAccessToken(user.getName());
+        String username = user.getName();
+        String jwt = jwtUtil.generateAccessToken(username);
 
-        // Optional: generate refresh token too
-        // String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
+        String redirectUrl = String.format("%s?token=%s&username=%s&email=%s",
+                frontendUrl,
+                URLEncoder.encode(jwt, StandardCharsets.UTF_8),
+                URLEncoder.encode(username, StandardCharsets.UTF_8),
+                URLEncoder.encode(email, StandardCharsets.UTF_8)
+        );
 
-        // Encode and redirect to frontend with the access token
-        String redirectUrl = frontendUrl + "?token=" + URLEncoder.encode(jwt, StandardCharsets.UTF_8);
         response.sendRedirect(redirectUrl);
     }
 }
