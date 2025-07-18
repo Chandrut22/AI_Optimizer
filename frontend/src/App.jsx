@@ -8,6 +8,7 @@ import RegisterPage from './pages/Register';
 import EmailVerificationPage from './pages/EmailVerification';
 import ForgotPasswordPage from './pages/ForgotPassword';
 import ResetPasswordPage from './pages/ResetPassword';
+import OAuthSuccess from './pages/OAuthSuccess';
 const queryClient = new QueryClient();
 
 const App = () => {
