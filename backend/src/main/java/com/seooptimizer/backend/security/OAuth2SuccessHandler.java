@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 
 import com.seooptimizer.backend.model.User;
 import com.seooptimizer.backend.repository.UserRepository;
-import com.seooptimizer.backend.util.JwtUtil;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
