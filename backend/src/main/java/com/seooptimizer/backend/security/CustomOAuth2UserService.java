@@ -34,6 +34,14 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
         String email = oauth2User.getAttribute("email");
         String name = oauth2User.getAttribute("name");
+        String oauthId = oauth2User.getAttribute("sub"); // Google specific
+
+
+        System.out.println("OAuth2 login successful for user: "+ email);
+        System.out.println("OAuth2 login successful for id: "+ oauthId);
+
+        // log.debug("Generated JWT: {}", jwt);
+
 
         if (email == null) {
             throw new OAuth2AuthenticationException("Email not found from OAuth2 provider");
@@ -54,6 +62,8 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
         // Generate JWT token
         String jwt = jwtUtil.generateAccessToken(user.getEmail());
+
+        System.out.println("Generated JWT: "+ jwt);
 
         // Add JWT to attributes
         Map<String, Object> attributes = new HashMap<>(oauth2User.getAttributes());
