@@ -2,18 +2,20 @@
 
 package com.seooptimizer.backend.security;
 
-import com.seooptimizer.backend.enumtype.AuthProvider;
-import com.seooptimizer.backend.enumtype.Role;
-import com.seooptimizer.backend.model.User;
-import com.seooptimizer.backend.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import java.util.Optional;
+
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
+import com.seooptimizer.backend.enumtype.AuthProvider;
+import com.seooptimizer.backend.enumtype.Role;
+import com.seooptimizer.backend.model.User;
+import com.seooptimizer.backend.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -48,7 +50,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     .email(email)
                     .name(name)
                     .provider(provider)
-                    .role(Role.ROLE_USER) // Assign a default role
+                    .role(Role.USER) // Assign a default role
                     .enabled(true)
                     .usageCount(0)
                     .credits(0)
