@@ -13,15 +13,12 @@ const OAuthSuccess = () => {
     const email = queryParams.get("email");
 
     if (token && email) {
-      // ✅ Store token securely
       localStorage.setItem("accessToken", token);
       localStorage.setItem("username", username);
       localStorage.setItem("email", email);
 
-      // ✅ Redirect to homepage or dashboard
       navigate("/dashboard"); // or wherever you want
     } else {
-      // ⚠️ Missing info — go back to login
       navigate("/login");
     }
   }, [navigate]);
