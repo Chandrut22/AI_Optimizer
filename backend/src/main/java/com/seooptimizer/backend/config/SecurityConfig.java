@@ -52,10 +52,13 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/",
-                    "/login/**",
-                    "/oauth2/**",
-                    "/api/auth/**"
+                    "/", 
+                    "/login/**", 
+                    "/oauth2/**", 
+                    "/api/auth/**",
+                    "/actuator/prometheus",       // ✅ Allow Prometheus endpoint
+                    "/actuator/health",           // ✅ Optional: Health endpoint
+                    "/actuator/info"              // ✅ Optional: Info endpoint
                 ).permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
@@ -70,6 +73,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 
     @Bean
     public CorsFilter corsFilter() {
