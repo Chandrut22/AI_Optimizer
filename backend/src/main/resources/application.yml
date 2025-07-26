@@ -70,3 +70,21 @@ jwt:
 logging:
   level:
     org.springframework.security: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    metrics:
+      enabled: true
+      
+  server:
+    port:
+      8080
+
+  metrics:
+    export:
+      prometheus:
+        enabled: true
