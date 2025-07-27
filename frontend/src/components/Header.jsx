@@ -154,7 +154,7 @@ const Header = ({
                           Settings
                         </button>
                         <hr className="my-1 border-border" />
-                        <button className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-accent transition-colors">
+                        <button onClick={handleLogout} className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-accent transition-colors">
                           <LogOut className="h-4 w-4 mr-2" />
                           Sign out
                         </button>
