@@ -267,7 +267,7 @@ const Header = ({
                       <Settings className="h-4 w-4 mr-2" />
                       Settings
                     </button>
-                    <button className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-accent transition-colors rounded-md">
+                    <button onClick={handleLogout} className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-accent transition-colors rounded-md">
                       <LogOut className="h-4 w-4 mr-2" />
                       Sign out
                     </button>
