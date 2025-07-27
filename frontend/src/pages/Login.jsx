@@ -74,8 +74,8 @@ const Login = () => {
     localStorage.setItem("refreshToken", result.refreshToken);
     localStorage.setItem("user", JSON.stringify(result.user));
 
-    // For demo, redirect to home page since no dashboard exists yet
-    navigate("/");
+    // Navigate to dashboard after successful login
+    navigate("/dashboard");
   } catch (error) {
     setIsLoading(false);
 
