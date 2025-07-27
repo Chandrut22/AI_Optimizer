@@ -237,6 +237,18 @@ const Register = () => {
               Already have an account?{' '}
               <a href="/login" className="text-primary hover:underline">Log in</a>
             </div>
+
+            {/* Demo Notice */}
+            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="text-center">
+                <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-2">Demo Mode Active</p>
+                <div className="space-y-1 text-xs text-blue-600 dark:text-blue-400">
+                  <p>• Use existing@example.com to test "email exists" error</p>
+                  <p>• All other emails will work and redirect to verification</p>
+                  <p>• No real emails are sent in demo mode</p>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="mt-8 text-center text-xs text-muted-foreground">
             By creating an account, you agree to our{' '}
