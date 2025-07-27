@@ -138,10 +138,10 @@ const Header = ({
                     <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg z-50">
                       <div className="p-3 border-b border-border">
                         <p className="text-sm font-medium text-card-foreground">
-                          {userName}
+                          {displayName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          john@example.com
+                          {userEmail}
                         </p>
                       </div>
                       <div className="py-1">
