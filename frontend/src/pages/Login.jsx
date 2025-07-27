@@ -72,8 +72,10 @@ const Login = () => {
     // Store the tokens (you might want to use httpOnly cookies instead for better security)
     localStorage.setItem("accessToken", result.accessToken);
     localStorage.setItem("refreshToken", result.refreshToken);
+    localStorage.setItem("user", JSON.stringify(result.user));
 
-    navigate("/dashboard");
+    // For demo, redirect to home page since no dashboard exists yet
+    navigate("/");
   } catch (error) {
     setIsLoading(false);
 
@@ -105,7 +107,18 @@ const Login = () => {
 
 
   const handleGoogleLogin = () => {
-    window.location.href = "https://ai-optimizer.onrender.com/oauth2/authorization/google";
+    // Demo Google login - simulate successful OAuth
+    setIsGoogleLoading(true);
+    setTimeout(() => {
+      localStorage.setItem("accessToken", "demo_google_access_token");
+      localStorage.setItem("refreshToken", "demo_google_refresh_token");
+      localStorage.setItem("user", JSON.stringify({
+        id: 2,
+        name: "Google Demo User",
+        email: "googledemo@example.com"
+      }));
+      navigate("/");
+    }, 2000);
   };
 
 
