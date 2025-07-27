@@ -124,7 +124,7 @@ const Header = ({
                     </div>
                   )}
                   <span className="text-sm font-medium text-foreground hidden lg:block">
-                    {userName}
+                    {displayName}
                   </span>
                 </button>
 
