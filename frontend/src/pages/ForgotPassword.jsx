@@ -170,11 +170,12 @@ const onSubmit = async (data) => {
             <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <div className="text-center">
                 <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-2">
-                  Demo Instructions
+                  Demo Mode - Try These:
                 </p>
                 <div className="space-y-1 text-xs text-blue-600 dark:text-blue-400">
-                  <p>• Use any valid email to see success</p>
-                  <p>• Use "notfound@example.com" to test error</p>
+                  <p>• Any email (except notfound@example.com) → Success</p>
+                  <p>• notfound@example.com → Error demo</p>
+                  <p>• All functions work without real backend</p>
                 </div>
               </div>
             </div>
