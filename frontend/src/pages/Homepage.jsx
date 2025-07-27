@@ -15,9 +15,14 @@ import {
 } from "lucide-react";
 
 const Homepage = () => {
+  // Check if user is logged in
+  const accessToken = localStorage.getItem("accessToken");
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const isLoggedIn = !!(accessToken && user.email);
+
   return (
     <div className="min-h-screen bg-background">
-      <Header isLoggedIn={false} />
+      <Header isLoggedIn={isLoggedIn} />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden">
