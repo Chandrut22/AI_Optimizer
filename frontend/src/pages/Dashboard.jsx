@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
@@ -7,9 +7,17 @@ import { User, Settings, BarChart3, FileText, LogOut } from "lucide-react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  
+
   // Get user from localStorage
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const accessToken = localStorage.getItem("accessToken");
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!accessToken || !user.email) {
+      navigate("/login");
+    }
+  }, [accessToken, user.email, navigate]);
   
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
