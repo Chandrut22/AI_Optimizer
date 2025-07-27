@@ -117,7 +117,7 @@ const Login = () => {
         name: "Google Demo User",
         email: "googledemo@example.com"
       }));
-      navigate("/");
+      navigate("/dashboard");
     }, 2000);
   };
 
