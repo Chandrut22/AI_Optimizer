@@ -17,12 +17,26 @@ import { cn } from "@/lib/utils";
 const Header = ({
   isLoggedIn = false,
   userAvatar,
-  userName = "John Doe",
+  userName,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Get user from localStorage if logged in
+  const user = isLoggedIn ? JSON.parse(localStorage.getItem("user") || "{}") : null;
+  const displayName = userName || user?.name || "Demo User";
+  const userEmail = user?.email || "demo@example.com";
+
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    setIsUserMenuOpen(false);
+    navigate("/login");
+  };
 
   const navigationLinks = [
     { href: "/", label: "Home" },
