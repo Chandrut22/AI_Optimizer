@@ -299,6 +299,16 @@ const onSubmit = async (data) => {
               Remember your password?{" "}
               <Link to="/login" className="text-[#38BDF8] font-medium">Sign in</Link>
             </div>
+
+            {/* Demo Notice */}
+            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="text-center">
+                <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-2">Demo Mode</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  Password reset works without real backend. Any valid email and password will succeed.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </main>
