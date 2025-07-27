@@ -239,12 +239,12 @@ const Header = ({
                       {userAvatar ? (
                         <img
                           src={userAvatar}
-                          alt={userName}
+                          alt={displayName}
                           className="w-8 h-8 rounded-full mr-3"
                         />
                       ) : (
-                        <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-3">
-                          {userName
+                        <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-3">
+                          {displayName
                             .split(" ")
                             .map((n) => n[0])
                             .join("")}
@@ -252,10 +252,10 @@ const Header = ({
                       )}
                       <div>
                         <p className="text-sm font-medium text-foreground">
-                          {userName}
+                          {displayName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          john@example.com
+                          {userEmail}
                         </p>
                       </div>
                     </div>
