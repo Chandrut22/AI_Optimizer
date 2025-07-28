@@ -32,14 +32,14 @@ public class SecurityConfig {
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final CorsConfig corsConfig;
 
-    @PostConstruct
-    public void logCorsConfig() {
-        System.out.println("✅ Loaded CORS Config:");
-        System.out.println("   ├─ Origins   : " + corsConfig.getAllowedOrigins());
-        System.out.println("   ├─ Methods   : " + corsConfig.getAllowedMethods());
-        System.out.println("   ├─ Headers   : " + corsConfig.getAllowedHeaders());
-        System.out.println("   └─ Credentials: " + corsConfig.isAllowCredentials());
-    }
+    // @PostConstruct
+    // public void logCorsConfig() {
+    //     System.out.println("✅ Loaded CORS Config:");
+    //     System.out.println("   ├─ Origins   : " + corsConfig.getAllowedOrigins());
+    //     System.out.println("   ├─ Methods   : " + corsConfig.getAllowedMethods());
+    //     System.out.println("   ├─ Headers   : " + corsConfig.getAllowedHeaders());
+    //     System.out.println("   └─ Credentials: " + corsConfig.isAllowCredentials());
+    // }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -56,9 +56,9 @@ public class SecurityConfig {
                     "/login/**", 
                     "/oauth2/**", 
                     "/api/auth/**",
-                    "/actuator/prometheus",       // ✅ Allow Prometheus endpoint
-                    "/actuator/health",           // ✅ Optional: Health endpoint
-                    "/actuator/info"              // ✅ Optional: Info endpoint
+                    "/actuator/prometheus",       
+                    "/actuator/health",          
+                    "/actuator/info"              
                 ).permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()

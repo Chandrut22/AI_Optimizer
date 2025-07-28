@@ -28,7 +28,7 @@ public class AdminUserInitializer {
                 User admin = User.builder()
                         .name("Super Admin")
                         .email(adminEmail)
-                        .password(passwordEncoder.encode("admin123")) // 👈 Change this in production!
+                        .password(passwordEncoder.encode("admin123"))
                         .role(Role.ADMIN)
                         .enabled(true)
                         .provider(AuthProvider.LOCAL)
