@@ -12,6 +12,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.seooptimizer.backend.dto.JwtResponse;
 import com.seooptimizer.backend.dto.LoginRequest;
 import com.seooptimizer.backend.dto.RegisterRequest;
+import com.seooptimizer.backend.dto.UserResponse;
 import com.seooptimizer.backend.enumtype.AuthProvider;
 import com.seooptimizer.backend.enumtype.Role;
 import com.seooptimizer.backend.model.RefreshToken;
@@ -38,9 +40,11 @@ import com.seooptimizer.backend.service.UserService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
     @Autowired private AuthenticationManager authenticationManager;
@@ -66,6 +70,35 @@ public class AuthController {
 
     private String generateVerificationCode() {
         return String.valueOf((int) (Math.random() * 900000) + 100000);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+
+        String email = authentication.getName();
+
+        Optional<User> optionalUser = userRepository.findByEmail(email);
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.status(404).body("User not found");
+        }
+
+        User user = optionalUser.get();
+
+        UserResponse response = new UserResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole(),
+                user.getProvider(),
+                user.getUsageCount(),
+                user.getCredits(),
+                user.getCreatedAt()
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/register")

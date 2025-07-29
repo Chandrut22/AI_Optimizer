@@ -15,18 +15,20 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
 import com.seooptimizer.backend.security.CustomOAuth2UserService;
-import com.seooptimizer.backend.security.JwtFilter;
+import com.seooptimizer.backend.security.JwtAuthenticationFilter;
+// import com.seooptimizer.backend.security.JwtFilter;
 import com.seooptimizer.backend.security.OAuth2SuccessHandler;
 import com.seooptimizer.backend.security.RestAuthenticationEntryPoint;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtFilter jwtFilter;
+    // private final JwtFilter jwtFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
@@ -60,6 +62,7 @@ public class SecurityConfig {
                     "/actuator/health",          
                     "/actuator/info"              
                 ).permitAll()
+                .requestMatchers("/api/auth/me").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
             )
@@ -69,7 +72,7 @@ public class SecurityConfig {
                 )
                 .successHandler(oAuth2SuccessHandler)
             )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
