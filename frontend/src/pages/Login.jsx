@@ -69,10 +69,6 @@ const Login = () => {
   try {
     const result = await loginUser(data.email, data.password);
 
-    // Store the tokens (you might want to use httpOnly cookies instead for better security)
-    localStorage.setItem("accessToken", result.accessToken);
-    localStorage.setItem("refreshToken", result.refreshToken);
-
     navigate("/dashboard");
   } catch (error) {
     setIsLoading(false);
