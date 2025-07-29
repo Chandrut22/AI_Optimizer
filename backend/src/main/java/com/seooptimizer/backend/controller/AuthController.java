@@ -15,6 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -73,19 +74,21 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Unauthorized");
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+        String accessToken = jwtUtil.extractTokenFromCookie(request, "access_token");
+        if (accessToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         }
 
-        String email = authentication.getName();
-
-        Optional<User> optionalUser = userRepository.findByEmail(email);
-        if (optionalUser.isEmpty()) {
-            return ResponseEntity.status(404).body("User not found");
+        String username;
+        try {
+            username = jwtUtil.extractUsername(accessToken);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
         }
 
-        User user = optionalUser.get();
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         UserResponse response = new UserResponse(
                 user.getId(),
@@ -170,9 +173,9 @@ public class AuthController {
 
         ResponseCookie accessCookie = ResponseCookie.from("access_token", accessToken)
                 .httpOnly(true)
-                .secure(true) 
+                .secure(true)
                 .path("/")
-                .maxAge(15 * 60) 
+                .maxAge(15 * 60)
                 .sameSite("None")
                 .build();
 
@@ -180,7 +183,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .maxAge(7 * 24 * 60 * 60) 
+                .maxAge(7 * 24 * 60 * 60)
                 .sameSite("None")
                 .build();
 
@@ -189,6 +192,7 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(Map.of("message", "Login successful"));
     }
+
 
     @PostMapping("/refresh-token")
     public ResponseEntity<?> refreshToken(HttpServletRequest request) {

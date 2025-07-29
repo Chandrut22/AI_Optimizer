@@ -1,42 +1,52 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { User, Settings, BarChart3, FileText, LogOut } from "lucide-react";
+import { getCurrentUser } from "@/api/auth"; // Adjust path if needed
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Safely parse user object from localStorage
-  let user = {};
-  try {
-    user = JSON.parse(localStorage.getItem("user") || "{}");
-  } catch (e) {
-    console.error("Error parsing user from localStorage:", e);
-  }
-
-  const accessToken = localStorage.getItem("accessToken");
-
-  // Redirect to login if user or token is missing
   useEffect(() => {
-    if (!accessToken || !user?.email) {
-      console.log("No access token or user email found, redirecting to login.");
-      navigate("/login");
-    }
-  }, [accessToken, user?.email, navigate]);
+    const fetchUser = async () => {
+      try {
+        const userData = await getCurrentUser();
+        setUser(userData);
+      } catch (error) {
+        console.error("User fetch failed:", error);
+        navigate("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
+    // Optional: call logout endpoint if you have one
+    localStorage.clear(); // only if you're storing non-sensitive data
     navigate("/login");
   };
 
-  const role = user?.role || "USER";
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen text-gray-600 dark:text-gray-300">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  const role = user.role || "USER";
   const roleLower = role.toLowerCase();
-  const email = user?.email || "demo@example.com";
-  const name = user?.name || "Demo User";
+  const email = user.email;
+  const name = user.name;
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0F172A] flex flex-col">
@@ -80,49 +90,31 @@ const Dashboard = () => {
           {/* Dashboard Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {/* Analytics */}
-            <div className="bg-white dark:bg-[#1E293B] rounded-xl shadow-lg p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-[#111827] dark:text-[#F8FAFC]">Analytics</h3>
-                  <p className="text-sm text-[#6B7280] dark:text-[#94A3B8]">View your metrics</p>
-                </div>
-              </div>
-              <Button className="w-full" variant="outline">View Analytics</Button>
-            </div>
+            <DashboardCard
+              icon={<BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />}
+              title="Analytics"
+              subtitle="View your metrics"
+              onClick={() => {}}
+            />
 
             {/* Reports */}
-            <div className="bg-white dark:bg-[#1E293B] rounded-xl shadow-lg p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-[#111827] dark:text-[#F8FAFC]">Reports</h3>
-                  <p className="text-sm text-[#6B7280] dark:text-[#94A3B8]">Generate reports</p>
-                </div>
-              </div>
-              <Button className="w-full" variant="outline">View Reports</Button>
-            </div>
+            <DashboardCard
+              icon={<FileText className="h-6 w-6 text-green-600 dark:text-green-400" />}
+              title="Reports"
+              subtitle="Generate reports"
+              onClick={() => {}}
+            />
 
             {/* Settings */}
-            <div className="bg-white dark:bg-[#1E293B] rounded-xl shadow-lg p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
-                  <Settings className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-[#111827] dark:text-[#F8FAFC]">Settings</h3>
-                  <p className="text-sm text-[#6B7280] dark:text-[#94A3B8]">Manage account</p>
-                </div>
-              </div>
-              <Button className="w-full" variant="outline">Open Settings</Button>
-            </div>
+            <DashboardCard
+              icon={<Settings className="h-6 w-6 text-purple-600 dark:text-purple-400" />}
+              title="Settings"
+              subtitle="Manage account"
+              onClick={() => {}}
+            />
           </div>
 
-          {/* Admin Panel Card */}
+          {/* Admin Panel */}
           {role === "ADMIN" && (
             <div className="mt-8">
               <div className="bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
@@ -146,7 +138,7 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Demo Notice */}
+          {/* Info Notice */}
           <div
             className={`p-6 rounded-lg border ${
               role === "ADMIN"
@@ -179,11 +171,7 @@ const Dashboard = () => {
                       : "text-blue-700 dark:text-blue-400"
                   }`}
                 >
-                  You're logged in as <strong>{email}</strong> with{" "}
-                  <strong>{roleLower}</strong> privileges.
-                  {role === "ADMIN"
-                    ? " You have access to the admin panel for user management and system settings."
-                    : " Use admin@example.com to access admin features."}
+                  You're logged in as <strong>{email}</strong> with <strong>{roleLower}</strong> privileges.
                 </p>
               </div>
             </div>
@@ -194,5 +182,23 @@ const Dashboard = () => {
     </div>
   );
 };
+
+// Reusable Dashboard Card Component
+const DashboardCard = ({ icon, title, subtitle, onClick }) => (
+  <div className="bg-white dark:bg-[#1E293B] rounded-xl shadow-lg p-6">
+    <div className="flex items-center gap-4 mb-4">
+      <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700/20 rounded-lg flex items-center justify-center">
+        {icon}
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold text-[#111827] dark:text-[#F8FAFC]">{title}</h3>
+        <p className="text-sm text-[#6B7280] dark:text-[#94A3B8]">{subtitle}</p>
+      </div>
+    </div>
+    <Button className="w-full" variant="outline" onClick={onClick}>
+      {`Open ${title}`}
+    </Button>
+  </div>
+);
 
 export default Dashboard;

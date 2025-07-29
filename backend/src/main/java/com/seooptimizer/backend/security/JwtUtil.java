@@ -86,11 +86,10 @@ public class JwtUtil {
                 .getBody();
     }
 
-    public String extractRefreshTokenFromCookie(HttpServletRequest request) {
+    public String extractTokenFromCookie(HttpServletRequest request, String cookieName) {
         if (request.getCookies() == null) return null;
-
         for (Cookie cookie : request.getCookies()) {
-            if ("refreshToken".equals(cookie.getName())) {
+            if (cookie.getName().equals(cookieName)) {
                 return cookie.getValue();
             }
         }
