@@ -6,7 +6,7 @@ import Footer from "@/components/Footer";
 import { User, Settings, BarChart3, FileText, LogOut } from "lucide-react";
 import { getCurrentUser } from "@/api/auth"; // Adjust path if needed
 
-const Dashboard = () => {
+const DashBoard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -204,4 +204,4 @@ const DashboardCard = ({ icon, title, subtitle, onClick }) => (
   </div>
 );
 
-export default Dashboard;
+export default DashBoard;
