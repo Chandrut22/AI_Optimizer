@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,27 @@ public class RefreshTokenService {
         ));
 
         return refreshTokenRepository.save(token);
+    }
+
+    public String rotateRefreshToken(String email) {
+        String newToken = UUID.randomUUID().toString();
+
+        LocalDateTime expiryDate = LocalDateTime.now().plusDays(7);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+
+        refreshTokenRepository.findByUser(user).ifPresent(refreshTokenRepository::delete);
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .token(newToken)
+                .expiryDate(expiryDate)
+                .user(user)
+                .build();
+
+        refreshTokenRepository.save(refreshToken);
+
+        return newToken;
     }
 
     public Optional<RefreshToken> findByToken(String token) {

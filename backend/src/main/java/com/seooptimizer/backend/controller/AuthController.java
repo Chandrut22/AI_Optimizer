@@ -196,7 +196,7 @@ public class AuthController {
 
     @PostMapping("/refresh-token")
     public ResponseEntity<?> refreshToken(HttpServletRequest request) {
-        String oldRefreshToken = jwtUtil.extractRefreshTokenFromCookie(request);
+        String oldRefreshToken = jwtUtil.extractTokenFromCookie(request, "refresh_token");
 
         if (oldRefreshToken == null || !refreshTokenService.validate(oldRefreshToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -204,13 +204,33 @@ public class AuthController {
         }
 
         String email = jwtUtil.extractUsername(oldRefreshToken);
+
         String newAccessToken = jwtUtil.generateAccessToken(email);
-        String newRefreshToken = jwtUtil.rotateRefreshToken(email);
+        String newRefreshToken = refreshTokenService.rotateRefreshToken(email);
 
         refreshTokenService.deleteByToken(oldRefreshToken);
         refreshTokenService.saveToken(email, newRefreshToken);
 
-        return ResponseEntity.ok(new JwtResponse(newAccessToken, newRefreshToken));
+        ResponseCookie accessCookie = ResponseCookie.from("access_token", newAccessToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(15 * 60)
+                .sameSite("None")
+                .build();
+
+        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", newRefreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(7 * 24 * 60 * 60)
+                .sameSite("None")
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(Map.of("message", "Tokens refreshed successfully"));
     }
 
     @PostMapping("/forgot-password")
@@ -311,7 +331,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
-        String refreshToken = jwtUtil.extractRefreshTokenFromCookie(request);
+        String refreshToken = jwtUtil.extractTokenFromCookie(request, "refresh_token");
         if (refreshToken != null) {
             refreshTokenService.deleteByToken(refreshToken);
         }
