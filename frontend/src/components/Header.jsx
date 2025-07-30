@@ -18,6 +18,7 @@ const Header = ({
   isLoggedIn = false,
   userAvatar,
   userName = "John Doe",
+  userEmail = ""
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -127,7 +128,7 @@ const Header = ({
                           {userName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          john@example.com
+                          {userEmail}
                         </p>
                       </div>
                       <div className="py-1">

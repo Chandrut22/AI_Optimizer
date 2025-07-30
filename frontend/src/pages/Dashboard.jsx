@@ -50,7 +50,10 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0F172A] flex flex-col">
-      <Header isLoggedIn={true} />
+      <Header 
+        isLoggedIn={true} 
+        userName={user.name}
+        userEmail={user.email}/>
       <main className="flex-1 p-6">
         <div className="max-w-6xl mx-auto">
           {/* Welcome Section */}
