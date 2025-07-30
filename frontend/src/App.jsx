@@ -9,7 +9,7 @@ import EmailVerificationPage from './pages/EmailVerification';
 import ForgotPasswordPage from './pages/ForgotPassword';
 import ResetPasswordPage from './pages/ResetPassword';
 import OAuthSuccess from './pages/OAuthSuccess';
-import DashBoard from './pages/DashBoard';
+import PanelPage from './pages/PanelPage';
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -26,7 +26,7 @@ const App = () => {
                         <Route path='/forgot-password' element={<ForgotPasswordPage />} />
                         <Route path='/reset-password' element={<ResetPasswordPage />}/>
                         <Route path="/oauth-success" element={<OAuthSuccess />} />
-                        <Route path="/dashboard" element={<DashBoard />} /> 
+                        <Route path="/dashboard" element={<PanelPage />} /> 
                     </Routes>
                 </BrowserRouter>
             </ThemeProvider>
