@@ -12,8 +12,6 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.seooptimizer.backend.dto.JwtResponse;
 import com.seooptimizer.backend.dto.LoginRequest;
 import com.seooptimizer.backend.dto.RegisterRequest;
 import com.seooptimizer.backend.dto.UserResponse;
@@ -40,7 +37,6 @@ import com.seooptimizer.backend.service.RefreshTokenService;
 import com.seooptimizer.backend.service.UserService;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -329,15 +325,28 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Password has been successfully reset"));
     }
 
-    @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
-        String refreshToken = jwtUtil.extractTokenFromCookie(request, "refresh_token");
-        if (refreshToken != null) {
-            refreshTokenService.deleteByToken(refreshToken);
-        }
+   @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        ResponseCookie deleteAccessToken = ResponseCookie.from("access_token", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(0) // Expire immediately
+                .sameSite("None")
+                .build();
 
-        SecurityContextHolder.clearContext();
-        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+        ResponseCookie deleteRefreshToken = ResponseCookie.from("refresh_token", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(0) // Expire immediately
+                .sameSite("None")
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, deleteAccessToken.toString())
+                .header(HttpHeaders.SET_COOKIE, deleteRefreshToken.toString())
+                .body(Map.of("message", "Logged out successfully"));
     }
 
     @GetMapping("/visit")

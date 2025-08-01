@@ -11,7 +11,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { loginUser } from "@/api/auth"; 
+import { loginUser, getCurrentUser } from "@/api/auth"; 
+import { useAuth } from "@/context/AuthContext";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -51,6 +52,7 @@ const Login = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [loginError, setLoginError] = useState(null);
   const navigate = useNavigate();
+  const { setUser } = useAuth(); 
 
   const {
     register,
@@ -63,41 +65,38 @@ const Login = () => {
   });
 
   const onSubmit = async (data) => {
-  setIsLoading(true);
-  setLoginError(null);
+    setIsLoading(true);
+    setLoginError(null);
 
-  try {
-    const result = await loginUser(data.email, data.password);
+    try {
+      // Step 1: Login the user
+      await loginUser(data.email, data.password);
 
-    navigate("/dashboard");
-  } catch (error) {
-    setIsLoading(false);
+      // Step 2: Get current user (via helper function)
+      const user = await getCurrentUser();
+      setUser(user); // ✅ Save user in context
 
-    // Handle backend-defined error response
-    if (error.response) {
-      const { status, data } = error.response;
+      navigate("/dashboard");
+    } catch (error) {
+      setIsLoading(false);
 
-      if (status === 404) {
+      if (error.status === 404) {
         setLoginError("User not found.");
         setError("email", { type: "manual", message: "" });
-      } else if (status === 403) {
+      } else if (error.status === 403) {
         setLoginError("Please verify your email before logging in.");
         setError("email", { type: "manual", message: "" });
-      } else if (status === 401) {
+      } else if (error.status === 401) {
         setLoginError("Incorrect email or password.");
         setError("email", { type: "manual", message: "" });
         setError("password", { type: "manual", message: "" });
       } else {
         setLoginError("Something went wrong. Please try again later.");
       }
-    } else {
-      // Fallback for unknown error (e.g., network issue)
-      setLoginError("Network error. Please check your internet connection.");
+    } finally {
+      setIsLoading(false);
     }
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
 
   const handleGoogleLogin = () => {

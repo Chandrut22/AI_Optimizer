@@ -10,6 +10,9 @@ import ForgotPasswordPage from './pages/ForgotPassword';
 import ResetPasswordPage from './pages/ResetPassword';
 import OAuthSuccess from './pages/OAuthSuccess';
 import PanelPage from './pages/PanelPage';
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { AuthProvider } from './context/AuthContext.jsx'
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -18,16 +21,18 @@ const App = () => {
             <ThemeProvider defaultTheme='system' storageKey='ai-platform-theme'>
                 <Sonner />
                 <BrowserRouter>
-                    <Routes>
-                        <Route path='/' element={<Homepage />} />
-                        <Route path='/login' element={<LoginPage />} />
-                        <Route path='/register' element={<RegisterPage />} />
-                        <Route path='/verify-email' element={<EmailVerificationPage />} />
-                        <Route path='/forgot-password' element={<ForgotPasswordPage />} />
-                        <Route path='/reset-password' element={<ResetPasswordPage />}/>
-                        <Route path="/oauth-success" element={<OAuthSuccess />} />
-                        <Route path="/dashboard" element={<PanelPage />} /> 
-                    </Routes>
+                    <AuthProvider>
+                        <Routes>
+                            <Route path='/' element={<Homepage />} />
+                            <Route path='/login' element={<LoginPage />} />
+                            <Route path='/register' element={<RegisterPage />} />
+                            <Route path='/verify-email' element={<EmailVerificationPage />} />
+                            <Route path='/forgot-password' element={<ForgotPasswordPage />} />
+                            <Route path='/reset-password' element={<ResetPasswordPage />}/>
+                            <Route path="/oauth-success" element={<OAuthSuccess />} />
+                            <Route path="/dashboard" element={<ProtectedRoute> <PanelPage /> </ProtectedRoute>} /> 
+                        </Routes>
+                    </AuthProvider>
                 </BrowserRouter>
             </ThemeProvider>
         </QueryClientProvider>
