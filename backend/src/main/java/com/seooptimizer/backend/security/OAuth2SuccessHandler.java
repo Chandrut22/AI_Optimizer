@@ -1,7 +1,6 @@
 package com.seooptimizer.backend.security;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
@@ -10,8 +9,10 @@ import org.springframework.stereotype.Component;
 
 import com.seooptimizer.backend.enumtype.AuthProvider;
 import com.seooptimizer.backend.enumtype.Role;
+import com.seooptimizer.backend.model.RefreshToken;
 import com.seooptimizer.backend.model.User;
 import com.seooptimizer.backend.repository.UserRepository;
+import com.seooptimizer.backend.service.RefreshTokenService;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -25,6 +26,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+    private final RefreshTokenService refreshTokenService;
 
     private final String frontendUrl = "https://ai-optimizer-beta.vercel.app/oauth-success";
 
@@ -43,24 +45,33 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             newUser.setProvider(AuthProvider.GOOGLE);
             newUser.setRole(Role.USER);
             newUser.setEnabled(true);
-            newUser.setCredits(100); // optional default
+            newUser.setCredits(100); // default credits
             return userRepository.save(newUser);
         });
 
-        // ✅ Generate JWT token
-        String jwt = jwtUtil.generateAccessToken(user.getName());
+        // ✅ Generate access and refresh tokens
+        String accessToken = jwtUtil.generateAccessToken(user.getEmail());
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getEmail());
 
-        // ✅ Create secure HttpOnly cookie for the JWT
-        Cookie jwtCookie = new Cookie("jwt", jwt);
-        jwtCookie.setHttpOnly(true);
-        jwtCookie.setSecure(true); // set true in production with HTTPS
-        jwtCookie.setPath("/");
-        jwtCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
+        // ✅ Create HttpOnly Secure cookies for both tokens
 
-        // ✅ Add cookie to response
-        response.addCookie(jwtCookie);
+        Cookie accessCookie = new Cookie("access_token", accessToken);
+        accessCookie.setHttpOnly(true);
+        accessCookie.setSecure(true);
+        accessCookie.setPath("/");
+        accessCookie.setMaxAge(15 * 60); // 15 minutes
 
-        // ✅ Redirect to frontend success page (no token in URL)
+        Cookie refreshCookie = new Cookie("refresh_token", refreshToken.getToken());
+        refreshCookie.setHttpOnly(true);
+        refreshCookie.setSecure(true);
+        refreshCookie.setPath("/");
+        refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
+
+        response.addCookie(accessCookie);
+        response.addCookie(refreshCookie);
+
         response.sendRedirect(frontendUrl);
     }
 }
+
+
