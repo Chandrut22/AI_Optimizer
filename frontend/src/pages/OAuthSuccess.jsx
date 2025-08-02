@@ -1,27 +1,32 @@
 // src/pages/OAuthSuccess.jsx
 
-import { useEffect } from "react";
+import { useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "@/context/AuthContext";
+import { getCurrentUser } from "@/api/auth";  // adjust the path if needed
 
 const OAuthSuccess = () => {
   const navigate = useNavigate();
+  const { setUser } = useContext(AuthContext);
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const token = queryParams.get("token");
-    const username = queryParams.get("username");
-    const email = queryParams.get("email");
+    const fetchUser = async () => {
+      try {
+        const res = await getCurrentUser();
 
-    if (token && email) {
-      localStorage.setItem("accessToken", token);
-      localStorage.setItem("username", username);
-      localStorage.setItem("email", email);
+        if (!res.ok) throw new Error("Authentication failed");
 
-      navigate("/dashboard"); // or wherever you want
-    } else {
-      navigate("/login");
-    }
-  }, [navigate]);
+        const userData = await res.json();
+        setUser(userData); // store in context
+        navigate("/dashboard");
+      } catch (err) {
+        console.error("OAuth login error:", err);
+        navigate("/login");
+      }
+    };
+
+    fetchUser();
+  }, [navigate, setUser]);
 
   return (
     <div className="flex items-center justify-center h-screen">
