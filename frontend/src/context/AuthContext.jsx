@@ -4,7 +4,6 @@
 // src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { getCurrentUser, logoutUser } from "@/api/auth"; // Import API functions if needed
 
 const AuthContext = createContext();
@@ -17,7 +16,7 @@ export const AuthProvider = ({ children }) => {
   const getMe = async () => {
     // setLoading(true);
     try {
-      const res = getCurrentUser();
+      const res = await getCurrentUser();
       setUser(res.data);
     } catch (err) {
       setUser(null);
