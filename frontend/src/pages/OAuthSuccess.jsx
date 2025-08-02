@@ -12,8 +12,13 @@ const OAuthSuccess = () => {
       try {
         // ✅ Fetch user from backend using secure cookie
         const res = await getCurrentUser();
-        setUser(res.data); // { username, email, etc. }
-        navigate("/dashboard");
+        if (res.data) {
+          setUser(res.data);
+          navigate("/dashboard");
+        } else {
+          console.error("User data not found");
+          navigate("/login");
+        }
       } catch (err) {
         console.error("OAuth login failed:", err);
         navigate("/login");
