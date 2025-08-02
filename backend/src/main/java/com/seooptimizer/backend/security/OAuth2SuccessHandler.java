@@ -1,7 +1,6 @@
 package com.seooptimizer.backend.security;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 import org.springframework.security.core.Authentication;
@@ -15,6 +14,7 @@ import com.seooptimizer.backend.model.User;
 import com.seooptimizer.backend.repository.UserRepository;
 
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -47,16 +47,20 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             return userRepository.save(newUser);
         });
 
-        String username = user.getName();
-        String jwt = jwtUtil.generateAccessToken(username);
+        // ✅ Generate JWT token
+        String jwt = jwtUtil.generateAccessToken(user.getName());
 
-        String redirectUrl = String.format("%s?token=%s&username=%s&email=%s",
-                frontendUrl,
-                URLEncoder.encode(jwt, StandardCharsets.UTF_8),
-                URLEncoder.encode(username, StandardCharsets.UTF_8),
-                URLEncoder.encode(email, StandardCharsets.UTF_8)
-        );
+        // ✅ Create secure HttpOnly cookie for the JWT
+        Cookie jwtCookie = new Cookie("jwt", jwt);
+        jwtCookie.setHttpOnly(true);
+        jwtCookie.setSecure(true); // set true in production with HTTPS
+        jwtCookie.setPath("/");
+        jwtCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
 
-        response.sendRedirect(redirectUrl);
+        // ✅ Add cookie to response
+        response.addCookie(jwtCookie);
+
+        // ✅ Redirect to frontend success page (no token in URL)
+        response.sendRedirect(frontendUrl);
     }
 }
