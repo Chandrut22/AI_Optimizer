@@ -1,52 +1,44 @@
-/* eslint-disable no-undef */
-/* eslint-disable no-unused-vars */
-/* eslint-disable react-refresh/only-export-components */
-// AuthContext.jsx
-// src/context/AuthContext.jsx
-import { createContext, useContext, useEffect, useState } from "react";
+// src/pages/OAuthSuccess.jsx
+
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { getCurrentUser, logoutUser } from "@/api/auth"; // Import API functions if needed
+import { useAuth } from "@/context/AuthContext"; // ✅ Correct import
+import { getCurrentUser } from "@/api/auth"; // Optional: you might not need this here
 
-const AuthContext = createContext();
-
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+const OAuthSuccess = () => {
   const navigate = useNavigate();
-
-  const getMe = async () => {
-    // setLoading(true);
-    try {
-      const res = getCurrentUser();
-      setUser(res.data);
-    } catch (err) {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { setUser } = useAuth();
 
   useEffect(() => {
-    getMe();
-  }, []);
+    const queryParams = new URLSearchParams(window.location.search);
+    const token = queryParams.get("token");
 
-  const logout = async () => {
-    try {
-      await logoutUser();
-    } catch (err) {
-      console.error("Logout error:", err);
-    } finally {
-      setUser(null);
-      navigate("/login", { replace: true });
+    if (token) {
+      // Token is stored in HttpOnly cookie via backend redirect — no need to store in localStorage
+
+      // Fetch the current user and set in context
+      const fetchUser = async () => {
+        try {
+          const res = await getCurrentUser();
+          setUser(res.data);
+          navigate("/dashboard");
+        } catch (err) {
+          console.error("OAuth login failed:", err);
+          navigate("/login");
+        }
+      };
+
+      fetchUser();
+    } else {
+      navigate("/login");
     }
-  };
+  }, [navigate, setUser]);
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout, loading }}>
-      {children}
-    </AuthContext.Provider>
+    <div className="flex items-center justify-center h-screen">
+      <h1 className="text-xl font-bold">Logging you in with Google...</h1>
+    </div>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export default OAuthSuccess;
