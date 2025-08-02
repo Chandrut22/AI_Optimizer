@@ -1,31 +1,26 @@
-// src/pages/OAuthSuccess.jsx
-
-import { useEffect, useContext } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "@/context/AuthContext";
-import { getCurrentUser } from "@/api/auth";  // adjust the path if needed
+import { useAuth } from "@/context/AuthContext";
+import { getCurrentUser } from "@/api/auth";
 
 const OAuthSuccess = () => {
   const navigate = useNavigate();
-  const { setUser } = useContext(AuthContext);
+  const { setUser } = useAuth();
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const handleOAuthLogin = async () => {
       try {
+        // ✅ Fetch user from backend using secure cookie
         const res = await getCurrentUser();
-
-        if (!res.ok) throw new Error("Authentication failed");
-
-        const userData = await res.json();
-        setUser(userData); // store in context
+        setUser(res.data); // { username, email, etc. }
         navigate("/dashboard");
       } catch (err) {
-        console.error("OAuth login error:", err);
+        console.error("OAuth login failed:", err);
         navigate("/login");
       }
     };
 
-    fetchUser();
+    handleOAuthLogin();
   }, [navigate, setUser]);
 
   return (
