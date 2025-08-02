@@ -4,33 +4,24 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { User, Settings, BarChart3, FileText, LogOut } from "lucide-react";
-import { getCurrentUser } from "@/api/auth"; // Adjust path if needed
+import { useAuth } from "@/context/AuthContext";
 
 const PanelPage = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth(); // Auth context
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const userData = await getCurrentUser();
-        setUser(userData);
-      } catch (error) {
-        console.error("User fetch failed:", error);
-        navigate("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
-  }, [navigate]);
+    if (user === null) {
+      navigate("/login");
+    } else {
+      setLoading(false);
+    }
+  }, [user, navigate]);
 
   const handleLogout = () => {
-    // Optional: call logout endpoint if you have one
-    localStorage.clear(); // only if you're storing non-sensitive data
-    navigate("/login");
+    logout();             // remove cookie and user
+    navigate("/login");   // redirect to login
   };
 
   if (loading) {
@@ -50,10 +41,7 @@ const PanelPage = () => {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0F172A] flex flex-col">
-      <Header 
-        isLoggedIn={true} 
-        userName={user.name}
-        userEmail={user.email}/>
+      <Header isLoggedIn={true} userName={name} userEmail={email} />
       <main className="flex-1 p-6">
         <div className="max-w-6xl mx-auto">
           {/* Welcome Section */}
@@ -92,23 +80,18 @@ const PanelPage = () => {
 
           {/* Dashboard Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {/* Analytics */}
             <DashboardCard
               icon={<BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />}
               title="Analytics"
               subtitle="View your metrics"
               onClick={() => {}}
             />
-
-            {/* Reports */}
             <DashboardCard
               icon={<FileText className="h-6 w-6 text-green-600 dark:text-green-400" />}
               title="Reports"
               subtitle="Generate reports"
               onClick={() => {}}
             />
-
-            {/* Settings */}
             <DashboardCard
               icon={<Settings className="h-6 w-6 text-purple-600 dark:text-purple-400" />}
               title="Settings"

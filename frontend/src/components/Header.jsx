@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "./ThemeProvider";
-import { useAuth } from "@/context/AuthContext.jsx"; // Changed import path
+import { useAuth } from "@/context/AuthContext.jsx";
 import {
   Moon,
   Sun,
@@ -19,7 +19,13 @@ const Header = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
+
+  useEffect(() => {
+    if (!user) {
+      setIsUserMenuOpen(false);
+    }
+  }, [user]);
 
   const navigationLinks = [
     { href: "/", label: "Home" },
@@ -37,7 +43,6 @@ const Header = () => {
     if (!name) return "U";
     return name.split(" ").map((n) => n[0]).join("").toUpperCase();
   };
-
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -84,7 +89,7 @@ const Header = () => {
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
 
-            {user ? (
+            {!loading && user ? (
               <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -98,7 +103,7 @@ const Header = () => {
                     />
                   ) : (
                     <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                      {getUserInitials(user?.name)}
+                      {getUserInitials(user.name)}
                     </div>
                   )}
                   <span className="text-sm font-medium hidden lg:block">
@@ -137,18 +142,20 @@ const Header = () => {
                 )}
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
-                <Link to="/login">
-                  <Button variant="ghost" size="sm">
-                    Login
-                  </Button>
-                </Link>
-                <Link to="/register">
-                  <Button size="sm" className="bg-primary text-white">
-                    Register
-                  </Button>
-                </Link>
-              </div>
+              !loading && (
+                <div className="flex items-center space-x-3">
+                  <Link to="/login">
+                    <Button variant="ghost" size="sm">
+                      Login
+                    </Button>
+                  </Link>
+                  <Link to="/register">
+                    <Button size="sm" className="bg-primary text-white">
+                      Register
+                    </Button>
+                  </Link>
+                </div>
+              )
             )}
           </div>
 
@@ -188,7 +195,7 @@ const Header = () => {
                 </Link>
               ))}
               <div className="pt-4 pb-3 border-t border-border">
-                {user ? (
+                {!loading && user ? (
                   <>
                     <div className="px-3 py-2">
                       <p className="text-sm font-medium">{user.name}</p>
@@ -211,22 +218,24 @@ const Header = () => {
                     </button>
                   </>
                 ) : (
-                  <>
-                    <Link
-                      to="/login"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="block px-3 py-2 rounded-md text-base font-medium"
-                    >
-                      Login
-                    </Link>
-                    <Link
-                      to="/register"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="block px-3 py-2 rounded-md text-base font-medium bg-primary text-primary-foreground hover:bg-primary/90"
-                    >
-                      Register
-                    </Link>
-                  </>
+                  !loading && (
+                    <>
+                      <Link
+                        to="/login"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block px-3 py-2 rounded-md text-base font-medium"
+                      >
+                        Login
+                      </Link>
+                      <Link
+                        to="/register"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block px-3 py-2 rounded-md text-base font-medium bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        Register
+                      </Link>
+                    </>
+                  )
                 )}
               </div>
             </div>

@@ -1,14 +1,15 @@
-// components/ProtectedRoute.jsx
-import { useAuth } from "@/context/AuthContext";
-import { Navigate } from "react-router-dom";
+  // src/components/ProtectedRoute.jsx
+  import { Navigate } from "react-router-dom";
+  import { useAuth } from "@/context/AuthContext";
 
-const ProtectedRoute = ({ children }) => {
-  const { user, authLoading } = useAuth();
+  const ProtectedRoute = ({ children }) => {
+    const { user, loading } = useAuth();
 
-  if (authLoading) return null; // Or a loading spinner
-  if (!user) return <Navigate to="/login" replace />;
+    if (loading) return <div className="p-4 text-center">Loading...</div>;
 
-  return children;
-};
+    if (!user) return <Navigate to="/login" replace />;
 
-export default ProtectedRoute;
+    return children;
+  };
+
+  export default ProtectedRoute;
