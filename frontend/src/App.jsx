@@ -11,7 +11,8 @@ import ResetPasswordPage from './pages/ResetPassword';
 import OAuthSuccess from './pages/OAuthSuccess';
 import PanelPage from './pages/PanelPage';
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { AuthProvider } from './context/AuthContext.jsx'
+import { AuthProvider } from './context/AuthContext.jsx';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => {
                             <Route path="/oauth-success" element={<OAuthSuccess />} />
                             <Route path="/dashboard" element={<ProtectedRoute> <PanelPage /> </ProtectedRoute>} /> 
                         </Routes>
+                        <SpeedInsights />
                     </AuthProvider>
                 </BrowserRouter>
             </ThemeProvider>
