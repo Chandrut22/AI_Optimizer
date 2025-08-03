@@ -8,12 +8,8 @@ const API = axios.create({
 
 // ✅ 1. Fetch currently logged-in user
 export const getCurrentUser = async () => {
-  try {
     const response = await API.get("/auth/me");
     return response.data; // should contain { id, name, email, ... }
-  } catch (error) {
-    throw error.response?.data || { message: "Failed to fetch user" };
-  }
 };
 
 // ✅ 2. Login and then fetch user info
