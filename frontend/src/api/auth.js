@@ -1,24 +1,47 @@
 import axios from "axios";
 
-// Create an Axios instance with base URL and cookie support
+// Create an Axios instance
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  withCredentials: true, // allows HttpOnly cookies to be sent
+  withCredentials: true, // Important for sending HttpOnly cookies
 });
 
-// ✅ 1. Fetch currently logged-in user
+// ✅ Add interceptor to handle token refresh on 401
+API.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Avoid infinite loop
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        // Try to refresh token
+        await API.post("/refresh-token");
+
+        // Retry the original request
+        return API(originalRequest);
+      } catch (refreshError) {
+        // Refresh token invalid → redirect or logout
+        console.error("Token refresh failed:", refreshError);
+        // Optional: clear user context, redirect to login
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+
 export const getCurrentUser = async () => {
-    const response = await API.get("/auth/me");
-    return response.data; // should contain { id, name, email, ... }
+  const response = await API.get("/auth/me");
+  return response.data;
 };
 
-// ✅ 2. Login and then fetch user info
 export const loginUser = async (email, password) => {
   try {
-    // Step 1: Login (cookie set by backend)
     await API.post("/auth/login", { email, password });
-
-    // Step 2: Fetch user using /auth/me
     const user = await getCurrentUser();
     return user;
   } catch (error) {
@@ -26,7 +49,6 @@ export const loginUser = async (email, password) => {
   }
 };
 
-// ✅ 3. Register user
 export const registerUser = async ({ name, email, password }) => {
   try {
     const response = await API.post("/auth/register", { name, email, password });
@@ -36,13 +58,12 @@ export const registerUser = async ({ name, email, password }) => {
   }
 };
 
-// ✅ 4. Verify email code
 export const verifyEmailCode = async ({ email, code, type }) => {
   try {
     const formData = new FormData();
     formData.append("email", email);
     formData.append("code", code);
-    formData.append("type", type); // "register" or "reset"
+    formData.append("type", type);
 
     const response = await API.post("/auth/verify-code", formData);
     return response.data;
@@ -51,7 +72,6 @@ export const verifyEmailCode = async ({ email, code, type }) => {
   }
 };
 
-// ✅ 5. Resend verification code
 export const resendVerificationCode = async (email) => {
   try {
     const response = await API.post("/auth/resend-reset-code", null, {
@@ -63,7 +83,6 @@ export const resendVerificationCode = async (email) => {
   }
 };
 
-// ✅ 6. Forgot password
 export const forgotPassword = async (email) => {
   try {
     const formData = new FormData();
@@ -76,7 +95,6 @@ export const forgotPassword = async (email) => {
   }
 };
 
-// ✅ 7. Set new password
 export const setNewPassword = async ({ email, newPassword }) => {
   try {
     const formData = new FormData();
@@ -90,7 +108,6 @@ export const setNewPassword = async ({ email, newPassword }) => {
   }
 };
 
-// ✅ 8. Logout
 export const logoutUser = async () => {
   try {
     const response = await API.post("/auth/logout");
