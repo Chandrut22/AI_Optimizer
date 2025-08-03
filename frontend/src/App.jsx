@@ -13,7 +13,6 @@ import PanelPage from './pages/PanelPage';
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { AuthProvider } from './context/AuthContext.jsx';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { Analytics } from "@vercel/analytics/next"
 
 const queryClient = new QueryClient();
 
@@ -35,7 +34,6 @@ const App = () => {
                             <Route path="/dashboard" element={<ProtectedRoute> <PanelPage /> </ProtectedRoute>} /> 
                         </Routes>
                         <SpeedInsights />
-                        <Analytics />
                     </AuthProvider>
                 </BrowserRouter>
             </ThemeProvider>
