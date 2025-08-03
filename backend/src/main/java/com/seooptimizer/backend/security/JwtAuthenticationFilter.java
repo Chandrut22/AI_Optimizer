@@ -29,35 +29,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String token = null;
-        String email = null;
 
         // 1. Try to get token from Authorization header
         final String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-            email = jwtUtil.extractUsername(token);
+        System.out.println("[JwtFilter] Incoming request: " + request.getRequestURI());
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.out.println("[JwtFilter] No Authorization header or invalid format.");
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        // 2. If not found in header, try to get from access_token cookie
-        if (token == null) {
-            token = jwtUtil.extractTokenFromCookie(request, "access_token");
-            if (token != null) {
-                email = jwtUtil.extractUsername(token);
-            }
-        }
+        final String token = authHeader.substring(7);
+        String email = jwtUtil.extractUsername(token);
+        System.out.println("[JwtFilter] Extracted token for email: " + email);
 
-        // 3. Validate token and set authentication
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+            System.out.println("[JwtFilter] Loaded user details for: " + email);
 
             if (jwtUtil.validateToken(token, userDetails)) {
+                System.out.println("[JwtFilter] Token is valid. Setting authentication.");
                 UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities());
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+            } else {
+                System.out.println("[JwtFilter] Token is invalid or expired.");
             }
         }
 

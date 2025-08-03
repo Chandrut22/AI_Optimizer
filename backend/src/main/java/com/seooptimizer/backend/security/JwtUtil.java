@@ -86,15 +86,19 @@ public class JwtUtil {
     }
 
     public String extractTokenFromCookie(HttpServletRequest request, String cookieName) {
-        if (request.getCookies() == null) return null;
-
-        for (Cookie cookie : request.getCookies()) {
-            if (cookieName.equals(cookie.getName())) {
-                return cookie.getValue();
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                System.out.println("[JwtUtil] Cookie found: " + cookie.getName() + " = " + cookie.getValue());
+                if (cookie.getName().equals(cookieName)) {
+                    return cookie.getValue();
+                }
             }
+        } else {
+            System.out.println("[JwtUtil] No cookies present in request.");
         }
         return null;
     }
+
 
     public String extractRefreshTokenFromCookie(HttpServletRequest request) {
         return extractTokenFromCookie(request, "refresh_token");
