@@ -14,7 +14,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -98,10 +97,10 @@ public class JwtUtil {
     }
 
     public String extractRefreshTokenFromCookie(HttpServletRequest request) {
-        return extractTokenFromCookie(request, "refreshToken");
+        return extractTokenFromCookie(request, "refresh_token");
     }
 
     public String extractAccessTokenFromCookie(HttpServletRequest request) {
-        return extractTokenFromCookie(request, "accessToken");
+        return extractTokenFromCookie(request, "access_token");
     }
 }
