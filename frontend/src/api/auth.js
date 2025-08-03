@@ -12,19 +12,22 @@ API.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Avoid infinite loop
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Avoid infinite retry loop
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      originalRequest.url !== "/refresh-token"
+    ) {
       originalRequest._retry = true;
       try {
-        // Try to refresh token
+        // Attempt to refresh token
         await API.post("/refresh-token");
 
-        // Retry the original request
+        // Retry the original request after refreshing
         return API(originalRequest);
       } catch (refreshError) {
-        // Refresh token invalid → redirect or logout
         console.error("Token refresh failed:", refreshError);
-        // Optional: clear user context, redirect to login
+
         return Promise.reject(refreshError);
       }
     }
