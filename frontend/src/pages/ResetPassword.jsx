@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -162,19 +163,30 @@ const onSubmit = async (data) => {
   setErrorMessage(null);
 
   try {
-    // Make the real API call
-    const response = await setNewPassword({ email, newPassword });
-    console.log("Password reset response:", response);
-    setIsSuccess(true);
-  } catch (error) {
-    const errMsg =
-      error?.response?.data?.message ||
-      error?.response?.data?.error ||
-      "Something went wrong. Please try again.";
+  const response = await setNewPassword({ email, newPassword });
+  console.log("Password reset response:", response);
+
+  setIsSuccess(true); // Show success message or UI state
+} catch (error) {
+  const errMsg =
+    error?.response?.data?.error || // from backend Map.of("error", ...)
+    error?.response?.data?.message || // fallback
+    "Something went wrong. Please try again.";
+
+  console.error("Password reset failed:", errMsg);
+
+  if (errMsg.includes("Reset code not verified")) {
+    setErrorMessage("Please verify the reset code before setting a new password.");
+  } else if (errMsg.includes("User not found")) {
+    setErrorMessage("User not found. Please check your email and try again.");
+  } else {
     setErrorMessage(errMsg);
-  } finally {
-    setIsLoading(false);
   }
+
+} finally {
+  setIsLoading(false);
+}
+
 };
 
   if (isSuccess) {

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -127,40 +128,55 @@ const Register = () => {
   setIsLoading(true);
 
   try {
-    const result = await registerUser({
-      name: data.name,
+  const result = await registerUser({
+    name: data.name,
+    email: data.email,
+    password: data.password,
+  });
+
+  // ✅ Registration success – Navigate to verification page
+  navigate("/verify-email", {
+    state: {
       email: data.email,
-      password: data.password,
+      message: "Registration successful. Please verify your email.",
+    },
+  });
+
+} catch (error) {
+  const errorMsg =
+    error.response?.data?.error || "Something went wrong. Please try again.";
+
+  console.error("Registration failed:", errorMsg);
+
+  // Match known backend error messages
+  if (errorMsg.includes("Invalid email")) {
+    setError("email", {
+      type: "manual",
+      message: "Invalid email format.",
     });
-
-    // Assuming backend returns a structured object with "code" and "message"
-    if (result.status === 200) {
-      navigate("/verify-email", { state: { email: data.email } });
-    } else {
-      // This branch may never hit if HTTP status is already 400/500
-      console.error("Unexpected response:", result.message);
-    }
-  } catch (error) {
-    setIsLoading(false);
-
-    const message = error.response?.data?.message || "Something went wrong. Please try again.";
-
-    if (message.includes("Invalid email")) {
-      setError("email", { type: "manual", message: "Invalid email format" });
-    } else if (message.includes("Password must")) {
-      setError("password", { type: "manual", message });
-    } else if (message.includes("Email already exists")) {
-      setError("email", { type: "manual", message: "This email is already registered" });
-    } else if (message.includes("Failed to send verification email")) {
-      alert("Registration successful, but verification email failed. Contact support.");
-    } else {
-      alert(message);
-    }
-
-    console.error("Registration failed:", message);
-  } finally {
-    setIsLoading(false);
+  } else if (errorMsg.includes("Password must")) {
+    setError("password", {
+      type: "manual",
+      message:
+        "Password must be at least 8 characters with uppercase, lowercase, number, and special character.",
+    });
+  } else if (errorMsg.includes("Email already exists")) {
+    setError("email", {
+      type: "manual",
+      message: "This email is already registered.",
+    });
+  } else if (errorMsg.includes("Failed to send verification email")) {
+    alert(
+      "Registration successful, but we couldn't send the verification email. Please contact support."
+    );
+  } else {
+    alert(errorMsg);
   }
+
+} finally {
+  setIsLoading(false);
+}
+
 };
 
 

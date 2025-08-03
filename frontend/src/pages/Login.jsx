@@ -71,33 +71,40 @@ const Login = () => {
     setLoginError(null);
 
     try {
-      // Step 1: Login the user
-      await loginUser(data.email, data.password);
+  // Step 1: Attempt login
+  await loginUser(data.email, data.password); // Sets secure cookies
 
-      // Step 2: Get current user (via helper function)
-      const user = await getCurrentUser();
-      setUser(user); // ✅ Save user in context
+  // Step 2: Fetch user details
+  const user = await getCurrentUser();
+  setUser(user); // ✅ Save to context or state
 
-      navigate("/dashboard");
-    } catch (error) {
-      setIsLoading(false);
+  // Step 3: Navigate to dashboard
+  navigate("/dashboard");
 
-      if (error.status === 404) {
-        setLoginError("User not found.");
-        setError("email", { type: "manual", message: "" });
-      } else if (error.status === 403) {
-        setLoginError("Please verify your email before logging in.");
-        setError("email", { type: "manual", message: "" });
-      } else if (error.status === 401) {
-        setLoginError("Incorrect email or password.");
-        setError("email", { type: "manual", message: "" });
-        setError("password", { type: "manual", message: "" });
-      } else {
-        setLoginError("Something went wrong. Please try again later.");
-      }
-    } finally {
-      setIsLoading(false);
-    }
+} catch (error) {
+  const status = error?.response?.status;
+  const backendMessage = error?.response?.data?.error || "Something went wrong.";
+
+  console.error("Login failed:", backendMessage);
+
+  // Reset previous field errors
+  setError("email", { type: "manual", message: "" });
+  setError("password", { type: "manual", message: "" });
+
+  if (status === 404) {
+    setLoginError("User not found.");
+  } else if (status === 403) {
+    setLoginError("Please verify your email before logging in.");
+  } else if (status === 401) {
+    setLoginError("Incorrect email or password.");
+  } else {
+    setLoginError("Something went wrong. Please try again later.");
+  }
+
+} finally {
+  setIsLoading(false);
+}
+
   };
 
 

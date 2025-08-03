@@ -40,24 +40,35 @@ const onSubmit = async (data) => {
   setErrorMessage(null);
 
   try {
-    await forgotPassword(data.email);
+  await forgotPassword(data.email); // API call to Spring Boot backend
 
-    navigate("/verify-email", {
-      state: {
-        email: data.email,
-        type: "password-reset",
-        message: "Reset code sent to your email. Please check your inbox.",
-      },
-    });
-  } catch (error) {
-    if (error.response?.status === 404) {
-      setErrorMessage("This email is not registered.");
-    } else {
-      setErrorMessage("Failed to send reset code. Please try again.");
-    }
-  } finally {
-    setIsLoading(false);
+  navigate("/verify-email", {
+    state: {
+      email: data.email,
+      type: "reset", // 👈 match Spring Boot switch-case (not "password-reset")
+      message: "Reset code sent to your email. Please check your inbox.",
+    },
+  });
+
+} catch (error) {
+  const status = error?.response?.status;
+  const backendMessage =
+    error?.response?.data?.error || "Something went wrong. Please try again.";
+
+  if (status === 404) {
+    setErrorMessage("This email is not registered.");
+  } else if (status === 500) {
+    setErrorMessage("Failed to send reset code. Please try again later.");
+  } else {
+    setErrorMessage(backendMessage);
   }
+
+  console.error("Forgot password error:", backendMessage);
+
+} finally {
+  setIsLoading(false);
+}
+
 };
 
 

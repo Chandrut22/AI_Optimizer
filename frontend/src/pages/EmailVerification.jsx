@@ -134,50 +134,62 @@ const EmailVerification = () => {
     setIsLoading(true);
 
     try {
-      const result = await verifyEmailCode({
-        email: userEmail,
-        code: data.code,
-        type: isPasswordReset ? "reset" : "register", // 👈 required for backend switch case
-      });
+  const result = await verifyEmailCode({
+    email: userEmail,
+    code: data.code,
+    type: isPasswordReset ? "reset" : "register", // Used in backend switch-case
+  });
 
-      console.log("Verification success:", result);
-      setIsSuccess(true);
+  console.log("Verification success:", result);
+  setIsSuccess(true);
 
-      setTimeout(() => {
-        navigate(isPasswordReset ? "/reset-password" : "/login", {
-          state: isPasswordReset
-            ? { email: userEmail, verifiedCode: data.code }
-            : undefined,
-        });
-      }, 2000);
-    } catch (error) {
-      const message = error?.response?.data?.message || "Something went wrong";
+  // Redirect after success
+  setTimeout(() => {
+    navigate(isPasswordReset ? "/reset-password" : "/login", {
+      state: isPasswordReset
+        ? { email: userEmail, verifiedCode: data.code }
+        : undefined,
+    });
+  }, 2000);
 
-      if (message.includes("User not found")) {
-        setError("code", { type: "manual", message: "User not found." });
-      } else if (message.includes("Invalid verification code")) {
-        setError("code", {
-          type: "manual",
-          message: "Invalid code. Please check and try again.",
-        });
-      } else if (message.includes("Invalid reset code")) {
-        setError("code", {
-          type: "manual",
-          message: "Invalid reset code. Please try again.",
-        });
-      } else if (message.includes("Reset code expired")) {
-        setError("code", {
-          type: "manual",
-          message: "Reset code expired. Please request a new one.",
-        });
-      } else {
-        setError("code", { type: "manual", message });
-      }
+} catch (error) {
+  const errorMsg =
+    error?.response?.data?.error ||
+    error?.response?.data?.message ||
+    "Something went wrong";
 
-      console.error("Verification failed:", message);
-    } finally {
-      setIsLoading(false);
-    }
+  console.error("Verification failed:", errorMsg);
+
+  // Custom error mapping
+  if (/User not found/i.test(errorMsg)) {
+    setError("code", { type: "manual", message: "User not found." });
+  } else if (/Invalid verification code/i.test(errorMsg)) {
+    setError("code", {
+      type: "manual",
+      message: "Invalid verification code. Please try again.",
+    });
+  } else if (/Invalid reset code/i.test(errorMsg)) {
+    setError("code", {
+      type: "manual",
+      message: "Invalid reset code. Please try again.",
+    });
+  } else if (/Reset code expired/i.test(errorMsg)) {
+    setError("code", {
+      type: "manual",
+      message: "Reset code expired. Please request a new code.",
+    });
+  } else {
+    // Fallback for unknown errors
+    setError("code", {
+      type: "manual",
+      message: errorMsg,
+    });
+  }
+
+} finally {
+  setIsLoading(false);
+}
+
   };
 
 
