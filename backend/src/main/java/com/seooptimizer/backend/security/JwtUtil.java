@@ -29,9 +29,6 @@ public class JwtUtil {
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpiryMs;
 
-    @Value("${jwt.refresh-token-expiration-ms}")
-    private long refreshTokenExpiryMs;
-
     @PostConstruct
     public void init() {
         try {
@@ -43,36 +40,43 @@ public class JwtUtil {
         }
     }
 
+    /**
+     * Generates a signed JWT access token for the given username.
+     */
     public String generateAccessToken(String username) {
-        return generateToken(username, accessTokenExpiryMs);
-    }
-
-    public String generateRefreshToken(String username) {
-        return generateToken(username, refreshTokenExpiryMs);
-    }
-
-    private String generateToken(String username, long expiryMs) {
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expiryMs))
+                .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiryMs))
                 .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
+    /**
+     * Extracts the username (subject) from a JWT token.
+     */
     public String extractUsername(String token) {
         return getClaims(token).getSubject();
     }
 
+    /**
+     * Checks whether the token is expired.
+     */
     public boolean isTokenExpired(String token) {
         return getClaims(token).getExpiration().before(new Date());
     }
 
+    /**
+     * Validates a JWT access token against user details.
+     */
     public boolean validateToken(String token, UserDetails userDetails) {
         String username = extractUsername(token);
         return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
     }
 
+    /**
+     * Parses the claims from a JWT token.
+     */
     private Claims getClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(secretKey)
@@ -81,6 +85,9 @@ public class JwtUtil {
                 .getBody();
     }
 
+    /**
+     * Extracts a specific cookie value from the request.
+     */
     public String extractTokenFromCookie(HttpServletRequest request, String cookieName) {
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
@@ -92,11 +99,11 @@ public class JwtUtil {
         return null;
     }
 
-    public String extractRefreshTokenFromCookie(HttpServletRequest request) {
-        return extractTokenFromCookie(request, "refresh_token");
-    }
-
     public String extractAccessTokenFromCookie(HttpServletRequest request) {
         return extractTokenFromCookie(request, "access_token");
+    }
+
+    public String extractRefreshTokenFromCookie(HttpServletRequest request) {
+        return extractTokenFromCookie(request, "refresh_token");
     }
 }

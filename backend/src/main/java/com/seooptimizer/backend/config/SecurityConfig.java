@@ -32,18 +32,8 @@ public class SecurityConfig {
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final CorsConfig corsConfig;
 
-    // @PostConstruct
-    // public void logCorsConfig() {
-    //     System.out.println("✅ Loaded CORS Config:");
-    //     System.out.println("   ├─ Origins   : " + corsConfig.getAllowedOrigins());
-    //     System.out.println("   ├─ Methods   : " + corsConfig.getAllowedMethods());
-    //     System.out.println("   ├─ Headers   : " + corsConfig.getAllowedHeaders());
-    //     System.out.println("   └─ Credentials: " + corsConfig.isAllowCredentials());
-    // }
-
-
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -54,12 +44,13 @@ public class SecurityConfig {
                     "/", 
                     "/login/**", 
                     "/oauth2/**", 
-                    "/api/auth/**",           // includes /api/auth/login, register, refresh-token
-                    "/actuator/prometheus", 
-                    "/actuator/health", 
-                    "/actuator/info"
+                    "/api/auth/**", 
+                    "/api/auth/forgot-password",
+                    "/api/auth/reset-password",
+                    "/api/auth/refresh-token"
                 ).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/api/auth/me").authenticated() // secure this endpoint
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth -> oauth
@@ -72,16 +63,13 @@ public class SecurityConfig {
     }
 
     /**
-     * Explicit CORS filter bean (if needed for non-Spring clients)
+     * Optional: Only needed if dealing with non-browser clients that need a dedicated CORS filter.
      */
     @Bean
     public CorsFilter corsFilter() {
         return new CorsFilter(corsConfigurationSource());
     }
 
-    /**
-     * CORS configuration source, reads from your CorsConfig bean
-     */
     private UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(corsConfig.getAllowedOrigins());
@@ -94,17 +82,11 @@ public class SecurityConfig {
         return source;
     }
 
-    /**
-     * Exposes authentication manager bean for login
-     */
     @Bean
-    public AuthenticationManager authManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
     }
 
-    /**
-     * Password encoder for storing user passwords securely
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

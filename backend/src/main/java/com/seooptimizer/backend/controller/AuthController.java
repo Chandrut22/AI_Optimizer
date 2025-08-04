@@ -1,6 +1,8 @@
 package com.seooptimizer.backend.controller;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -189,45 +191,71 @@ public class AuthController {
                 .body(Map.of("message", "Login successful"));
     }
 
-@PostMapping("/refresh-token")
-public ResponseEntity<?> refreshToken(HttpServletRequest request) {
-    String oldRefreshToken = jwtUtil.extractTokenFromCookie(request, "refresh_token");
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(HttpServletRequest request) {
+        String oldRefreshToken = jwtUtil.extractTokenFromCookie(request, "refresh_token");
 
-    if (oldRefreshToken == null || !refreshTokenService.validate(oldRefreshToken)) {
-        return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("error", "Invalid or expired refresh token"));
+        if (oldRefreshToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Missing refresh token"));
+        }
+
+        // Find refresh token in DB
+        Optional<RefreshToken> optionalToken = refreshTokenService.findByToken(oldRefreshToken);
+        if (optionalToken.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid refresh token"));
+        }
+
+        RefreshToken storedToken = optionalToken.get();
+
+        // Check if token is expired
+        if (storedToken.getExpiryDate() == null || 
+            Instant.now().isAfter(storedToken.getExpiryDate().toInstant(ZoneOffset.UTC))) {
+            
+            refreshTokenService.deleteByToken(oldRefreshToken);
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Refresh token has expired. Please login again."));
+        }
+
+
+
+        User user = storedToken.getUser();
+        String email = user.getEmail();
+
+        // Rotate refresh token
+        String newRefreshToken = refreshTokenService.rotateRefreshToken(email);
+
+        // Remove old token & save new one
+        refreshTokenService.deleteByToken(oldRefreshToken);
+        refreshTokenService.saveToken(email, newRefreshToken);
+
+        // Generate new access token
+        String newAccessToken = jwtUtil.generateAccessToken(email);
+
+        // Create cookies
+        ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", newAccessToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(15 * 60) // 15 minutes
+                .sameSite("None")
+                .build();
+
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", newRefreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(7 * 24 * 60 * 60) // 7 days
+                .sameSite("None")
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+                .body(Map.of("message", "Tokens refreshed successfully"));
     }
-
-    String email = jwtUtil.extractUsername(oldRefreshToken);
-
-    String newAccessToken = jwtUtil.generateAccessToken(email);
-    String newRefreshToken = refreshTokenService.rotateRefreshToken(email);
-
-    refreshTokenService.deleteByToken(oldRefreshToken);
-    refreshTokenService.saveToken(email, newRefreshToken);
-
-    ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", newAccessToken)
-            .httpOnly(true)
-            .secure(true)
-            .path("/")
-            .maxAge(15 * 60) // 15 minutes
-            .sameSite("None")
-            .build();
-
-    ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", newRefreshToken)
-            .httpOnly(true)
-            .secure(true)
-            .path("/")
-            .maxAge(7 * 24 * 60 * 60) // 7 days
-            .sameSite("None")
-            .build();
-
-    return ResponseEntity.ok()
-            .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
-            .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
-            .body(Map.of("message", "Tokens refreshed successfully"));
-}
 
 
     @PostMapping("/forgot-password")
