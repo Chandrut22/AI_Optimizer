@@ -29,10 +29,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
+        String requestURI = request.getRequestURI();
+        String authHeader = request.getHeader("Authorization");
 
-        // 1. Try to get token from Authorization header
-        final String authHeader = request.getHeader("Authorization");
-        System.out.println("[JwtFilter] Incoming request: " + request.getRequestURI());
+        System.out.println("[JwtFilter] Incoming request: " + requestURI);
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             System.out.println("[JwtFilter] No Authorization header or invalid format.");
@@ -40,23 +40,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        final String token = authHeader.substring(7);
-        String email = jwtUtil.extractUsername(token);
-        System.out.println("[JwtFilter] Extracted token for email: " + email);
+        String jwtToken = authHeader.substring(7);
+        String email = jwtUtil.extractUsername(jwtToken);
 
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (email == null) {
+            System.out.println("[JwtFilter] Token does not contain a valid username.");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-            System.out.println("[JwtFilter] Loaded user details for: " + email);
 
-            if (jwtUtil.validateToken(token, userDetails)) {
-                System.out.println("[JwtFilter] Token is valid. Setting authentication.");
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            if (jwtUtil.validateToken(jwtToken, userDetails)) {
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
 
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                authentication.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                System.out.println("[JwtFilter] Authentication set for user: " + email);
             } else {
-                System.out.println("[JwtFilter] Token is invalid or expired.");
+                System.out.println("[JwtFilter] Invalid or expired token for user: " + email);
             }
         }
 

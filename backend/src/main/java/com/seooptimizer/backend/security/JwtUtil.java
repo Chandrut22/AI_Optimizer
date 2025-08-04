@@ -51,10 +51,6 @@ public class JwtUtil {
         return generateToken(username, refreshTokenExpiryMs);
     }
 
-    public String rotateRefreshToken(String username) {
-        return generateRefreshToken(username); // New refresh token generation
-    }
-
     private String generateToken(String username, long expiryMs) {
         return Jwts.builder()
                 .setSubject(username)
@@ -88,17 +84,13 @@ public class JwtUtil {
     public String extractTokenFromCookie(HttpServletRequest request, String cookieName) {
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
-                System.out.println("[JwtUtil] Cookie found: " + cookie.getName() + " = " + cookie.getValue());
                 if (cookie.getName().equals(cookieName)) {
                     return cookie.getValue();
                 }
             }
-        } else {
-            System.out.println("[JwtUtil] No cookies present in request.");
         }
         return null;
     }
-
 
     public String extractRefreshTokenFromCookie(HttpServletRequest request) {
         return extractTokenFromCookie(request, "refresh_token");
