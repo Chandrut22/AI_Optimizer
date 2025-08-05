@@ -29,9 +29,7 @@ public class RefreshTokenService {
     @Value("${jwt.refresh-token-expiration-ms}")
     private Long refreshTokenDurationMs;
 
-    /**
-     * Create or update refresh token for a user.
-     */
+    // ✅ Used in /login and other flows
     public RefreshToken createRefreshToken(String email) {
         User user = getUserByEmail(email);
 
@@ -45,12 +43,11 @@ public class RefreshTokenService {
         return refreshTokenRepository.save(token);
     }
 
-    /**
-     * Rotate and return a new refresh token after deleting the old one.
-     */
+    // ✅ Used in /refresh-token
     public String rotateRefreshToken(String email) {
         User user = getUserByEmail(email);
 
+        // delete existing if present
         refreshTokenRepository.findByUser(user)
                 .ifPresent(refreshTokenRepository::delete);
 
@@ -59,45 +56,47 @@ public class RefreshTokenService {
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
                 .token(newToken)
-                .expiryDate(LocalDateTime.now().plusDays(7)) // hardcoded for 7 days
+                .expiryDate(getExpiryDateFromNow())
                 .build();
 
         refreshTokenRepository.save(refreshToken);
         return newToken;
     }
 
-    /**
-     * Validate a refresh token (existence and expiration).
-     */
+    // ✅ Used in /refresh-token
     public boolean validate(String token) {
         return findByToken(token)
                 .map(this::verifyExpiration)
                 .isPresent();
     }
 
-    /**
-     * Find refresh token by token string.
-     */
+    // ✅ Called from AuthController
     public Optional<RefreshToken> findByToken(String token) {
         return refreshTokenRepository.findByToken(token);
     }
 
-    /**
-     * Ensure token has not expired. If expired, delete it and throw exception.
-     */
     public RefreshToken verifyExpiration(RefreshToken token) {
-        if (token.getExpiryDate().isBefore(LocalDateTime.now(ZoneId.systemDefault()))) {
+        Instant now = Instant.now();
+        Instant tokenExpiry = token.getExpiryDate()
+                                   .atZone(ZoneId.systemDefault())
+                                   .toInstant();
+
+        if (now.isAfter(tokenExpiry)) {
             refreshTokenRepository.delete(token);
             throw new TokenRefreshException(token.getToken(), "Refresh token expired. Please login again.");
         }
         return token;
     }
 
-    /**
-     * Save new refresh token for a user.
-     */
-    public void saveToken(String email, String tokenStr) {
+    // ✅ Used in /refresh-token
+    public String saveToken(String email) {
         User user = getUserByEmail(email);
+
+        // Delete existing token if present
+        refreshTokenRepository.findByUser(user)
+                .ifPresent(refreshTokenRepository::delete);
+
+        String tokenStr = UUID.randomUUID().toString();
 
         RefreshToken token = new RefreshToken();
         token.setUser(user);
@@ -105,20 +104,17 @@ public class RefreshTokenService {
         token.setExpiryDate(getExpiryDateFromNow());
 
         refreshTokenRepository.save(token);
+
+        return tokenStr;
     }
 
-    /**
-     * Delete refresh token by token value.
-     */
+
     @Transactional
     public void deleteByToken(String token) {
         refreshTokenRepository.findByToken(token)
                 .ifPresent(refreshTokenRepository::delete);
     }
 
-    /**
-     * Delete refresh token by user ID.
-     */
     @Transactional
     public void deleteByUserId(Long userId) {
         User user = userRepository.findById(userId)
@@ -126,17 +122,11 @@ public class RefreshTokenService {
         refreshTokenRepository.deleteByUser(user);
     }
 
-    /**
-     * Utility: Get user by email or throw.
-     */
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
     }
 
-    /**
-     * Utility: Get token expiration date from current time.
-     */
     private LocalDateTime getExpiryDateFromNow() {
         return LocalDateTime.ofInstant(
                 Instant.now().plusMillis(refreshTokenDurationMs),
