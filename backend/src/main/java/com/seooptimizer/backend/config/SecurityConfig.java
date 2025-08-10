@@ -47,7 +47,8 @@ public class SecurityConfig {
                     "/api/auth/**", 
                     "/api/auth/forgot-password",
                     "/api/auth/reset-password",
-                    "/api/auth/refresh-token"
+                    "/api/auth/refresh-token",
+                    "/site.webmanifest"
                 ).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/me").authenticated() // secure this endpoint
