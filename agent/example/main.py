@@ -4,13 +4,16 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 import os
 from langchain.chat_models import init_chat_model
+from dotenv import load_dotenv
+from IPython.display import Image, display
 
 class State(TypedDict):
     messages: Annotated[list, add_messages]
 
 graph_builder = StateGraph(State)
 
-os.environ["GOOGLE_API_KEY"] = "AIzaSyArBux-AYJj_aXUwhm0tlEUfvflR9ZcVcI"
+load_dotenv()
+os.environ["GOOGLE_API_KEY"] = os.getenv("GEMINI_API_KEY")
 
 llm = init_chat_model("google_genai:gemini-2.0-flash")
 
@@ -43,10 +46,11 @@ while True:
         stream_graph_updates(user_input)
         break
 
-
-from IPython.display import Image, display
-
 try:
-    display(Image(graph.get_graph().draw_mermaid_png()))
-except Exception:
-    pass
+    image = Image(graph.get_graph().draw_mermaid_png())
+    display(image)
+    with open("graph.png", "wb") as f:
+        f.write(image.data)
+    print("Graph saved to graph.png")
+except Exception as e:
+    print(f"Error saving graph: {e}")
