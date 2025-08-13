@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -46,6 +48,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     @Autowired private AuthenticationManager authenticationManager;
     @Autowired private UserRepository userRepository;
     @Autowired private CustomerUserDetailsService userDetailsService;
@@ -73,20 +76,33 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+        logger.info("Received request to /me endpoint");
+
         String accessToken = jwtUtil.extractTokenFromCookie(request, "access_token");
         if (accessToken == null) {
+            logger.warn("No access token found in cookies");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         }
 
         String username;
         try {
             username = jwtUtil.extractUsername(accessToken);
+            logger.debug("Extracted username from token: {}", username);
         } catch (Exception e) {
+            logger.error("Invalid access token", e);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
         }
 
-        User user = userRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        User user;
+        try {
+            user = userRepository.findByEmail(username)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        } catch (UsernameNotFoundException ex) {
+            logger.error("User not found: {}", username);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        }
+
+        logger.info("Successfully retrieved user data for: {}", username);
 
         UserResponse response = new UserResponse(
                 user.getId(),
@@ -104,21 +120,32 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        logger.info("Received registration request for email: {}", request.getEmail());
+
+        // Validate email format
         if (!isValidEmail(request.getEmail())) {
+            logger.warn("Invalid email format: {}", request.getEmail());
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid email format"));
         }
 
+        // Validate password strength
         if (!isStrongPassword(request.getPassword())) {
+            logger.warn("Weak password attempt for email: {}", request.getEmail());
             return ResponseEntity.badRequest().body(Map.of("error",
                     "Password must be at least 8 characters, with uppercase, lowercase, digit, and special character"));
         }
 
+        // Check if email already exists
         if (userRepository.existsByEmail(request.getEmail())) {
+            logger.warn("Attempt to register with existing email: {}", request.getEmail());
             return ResponseEntity.badRequest().body(Map.of("error", "Email already exists"));
         }
 
+        // Generate verification code
         String code = generateVerificationCode();
+        logger.debug("Generated verification code for {}: {}", request.getEmail(), code);
 
+        // Save user
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
@@ -130,21 +157,28 @@ public class AuthController {
                 .build();
 
         userRepository.save(user);
+        logger.info("User saved in database: {}", request.getEmail());
 
+        // Send verification email
         try {
             emailService.sendVerificationEmail("Email Verification", request.getEmail(), request.getName(), code);
+            logger.info("Verification email sent to: {}", request.getEmail());
         } catch (Exception e) {
+            logger.error("Failed to send verification email to {}: {}", request.getEmail(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to send verification email"));
         }
 
+        logger.info("Registration successful for email: {}", request.getEmail());
         return ResponseEntity.ok(Map.of("message", "Registration successful. Please check your email for the verification code."));
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        logger.info("Received login request for email: {}", request.getEmail());
         Optional<User> optionalUser = userRepository.findByEmail(request.getEmail());
         if (optionalUser.isEmpty()) {
+            logger.warn("Login failed: User not found - {}", request.getEmail());
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "User not found"));
         }
@@ -152,6 +186,7 @@ public class AuthController {
         User user = optionalUser.get();
 
         if (!user.isEnabled()) {
+            logger.warn("Login failed: Email not verified - {}", request.getEmail());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "Please verify your email first."));
         }
@@ -161,6 +196,7 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
         } catch (Exception e) {
+            logger.error("Login failed: Invalid credentials for {}", request.getEmail(), e);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Invalid email or password"));
         }
@@ -185,6 +221,8 @@ public class AuthController {
                 .sameSite("None")
                 .build();
 
+        logger.info("Login successful for {}", request.getEmail());
+
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
@@ -193,15 +231,19 @@ public class AuthController {
 
     @PostMapping("/refresh-token")
     public ResponseEntity<?> refreshToken(HttpServletRequest request) {
+        logger.info("Incoming refresh token request");
+
         String oldRefreshToken = jwtUtil.extractRefreshTokenFromCookie(request);
 
         if (oldRefreshToken == null) {
+            logger.warn("Refresh token missing in request");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Missing refresh token"));
         }
 
         Optional<RefreshToken> optionalToken = refreshTokenService.findByToken(oldRefreshToken);
         if (optionalToken.isEmpty()) {
+            logger.warn("Invalid refresh token received");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Invalid refresh token"));
         }
@@ -212,6 +254,7 @@ public class AuthController {
                 .toInstant();
 
         if (Instant.now().isAfter(expiryInstant)) {
+            logger.info("Expired refresh token for user: {}", storedToken.getUser().getEmail());
             refreshTokenService.deleteByToken(oldRefreshToken);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Refresh token has expired. Please login again."));
@@ -220,7 +263,8 @@ public class AuthController {
         User user = storedToken.getUser();
         String email = user.getEmail();
 
-        // Delete old and generate/save new token in one method
+        logger.info("Rotating refresh token for user: {}", email);
+
         refreshTokenService.deleteByToken(oldRefreshToken);
         String newRefreshToken = refreshTokenService.saveToken(email);
 
@@ -242,18 +286,20 @@ public class AuthController {
                 .sameSite("None")
                 .build();
 
+        logger.info("Successfully refreshed tokens for user: {}", email);
+
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
                 .body(Map.of("message", "Tokens refreshed successfully"));
     }
 
-
-
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestParam String email) {
+        logger.info("Received forgot password request for email: {}", email);
         Optional<User> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {
+            logger.error("Forgot password failed: User not found with email {}", email); // log error
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "User not found"));
         }
@@ -267,30 +313,39 @@ public class AuthController {
         try {
             emailService.sendVerificationEmail("Password Reset", user.getEmail(), user.getName(), resetCode);
         } catch (Exception e) {
+            logger.error("Error sending password reset email to {}: {}", user.getEmail(), e.getMessage(), e); // log exception
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to send verification email"));
         }
 
+        logger.info("Password reset code sent successfully to {}", user.getEmail()); // success log
         return ResponseEntity.ok(Map.of("message", "Password reset code sent to email"));
     }
 
-    @PostMapping("/verify-code")
+   @PostMapping("/verify-code")
     public ResponseEntity<?> verifyGenericCode(
             @RequestParam String email,
             @RequestParam String code,
             @RequestParam String type) {
 
+        logger.info("Received verification request: email={}, type={}", email, type);
+
         Optional<User> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {
+            logger.warn("Verification failed: No user found with email={}", email);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "User not found"));
         }
 
         User user = optionalUser.get();
+        logger.debug("User found: id={}, email={}", user.getId(), user.getEmail());
 
         switch (type.toLowerCase()) {
             case "register":
+                logger.info("Processing registration verification for email={}", email);
+
                 if (user.getVerificationCode() == null || !user.getVerificationCode().equals(code)) {
+                    logger.warn("Invalid registration code for email={}", email);
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                             .body(Map.of("error", "Invalid verification code"));
                 }
@@ -299,24 +354,31 @@ public class AuthController {
                 user.setVerificationCode(null);
                 userRepository.save(user);
 
+                logger.info("Registration verification successful for email={}", email);
                 return ResponseEntity.ok(Map.of("message", "Email verified. You can now login."));
 
             case "reset":
+                logger.info("Processing password reset verification for email={}", email);
+
                 if (user.getResetCode() == null || !user.getResetCode().equals(code)) {
+                    logger.warn("Invalid reset code for email={}", email);
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                             .body(Map.of("error", "Invalid reset code"));
                 }
 
                 if (user.getResetCodeGeneratedAt() == null ||
                         user.getResetCodeGeneratedAt().plusMinutes(15).isBefore(LocalDateTime.now())) {
+                    logger.warn("Expired reset code for email={}", email);
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                             .body(Map.of("error", "Reset code expired or invalid"));
                 }
 
                 resetCodeVerifiedMap.put(email, true);
+                logger.info("Password reset code verified for email={}", email);
                 return ResponseEntity.ok(Map.of("message", "Reset code verified. You can now reset your password."));
 
             default:
+                logger.error("Invalid verification type={} provided for email={}", type, email);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(Map.of("error", "Invalid verification type"));
         }
@@ -324,14 +386,17 @@ public class AuthController {
 
     @PostMapping("/set-new-password")
     public ResponseEntity<?> setNewPassword(@RequestParam String email, @RequestParam String newPassword) {
+        logger.info("Received request to set new password for email: {}", email);
         Boolean isVerified = resetCodeVerifiedMap.get(email);
         if (isVerified == null || !isVerified) {
+            logger.error("Password reset attempt failed for email {}: reset code not verified", email);
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "Reset code not verified. Please verify it first."));
         }
 
         Optional<User> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {
+            logger.error("Password reset attempt failed: user not found for email {}", email);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "User not found"));
         }
@@ -343,11 +408,17 @@ public class AuthController {
         userRepository.save(user);
         resetCodeVerifiedMap.remove(email);
 
+        logger.info("Password successfully reset for email {}", email);
         return ResponseEntity.ok(Map.of("message", "Password has been successfully reset"));
     }
 
-   @PostMapping("/logout")
-    public ResponseEntity<?> logout() {
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+        String clientIp = request.getRemoteAddr();
+
+        // Logging the logout request
+        logger.info("Logout request received from IP: {}", clientIp);
+
         ResponseCookie deleteAccessToken = ResponseCookie.from("access_token", "")
                 .httpOnly(true)
                 .secure(true)
@@ -364,36 +435,57 @@ public class AuthController {
                 .sameSite("None")
                 .build();
 
+        logger.info("Access and refresh tokens cleared for client IP: {}", clientIp);
+
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, deleteAccessToken.toString())
                 .header(HttpHeaders.SET_COOKIE, deleteRefreshToken.toString())
                 .body(Map.of("message", "Logged out successfully"));
     }
 
+
     @GetMapping("/visit")
     public ResponseEntity<?> logVisit(@RequestParam Long userId) {
-        userService.trackDailyVisit(userId);
-        return ResponseEntity.ok(Map.of("message", "Visit Tracked"));
+        logger.info("Received visit tracking request for userId: {}", userId);
+
+        try {
+            userService.trackDailyVisit(userId);
+            logger.info("Visit successfully tracked for userId: {}", userId);
+            return ResponseEntity.ok(Map.of("message", "Visit Tracked"));
+        } catch (Exception e) {
+            logger.error("Error tracking visit for userId: {}", userId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to track visit"));
+        }
     }
 
     @PostMapping("/resend-reset-code")
     public ResponseEntity<?> resendResetCode(@RequestParam String email) {
+        logger.info("Resend reset code request received for email: {}", email);
+
         Optional<User> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {
+            logger.warn("User not found for email: {}", email);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "User not found"));
         }
 
         User user = optionalUser.get();
-
         String newCode = generateVerificationCode();
         user.setResetCode(newCode);
         user.setResetCodeGeneratedAt(LocalDateTime.now());
         userRepository.save(user);
 
         try {
-            emailService.sendVerificationEmail("Password Reset Code", user.getEmail(), user.getName(), newCode);
+            emailService.sendVerificationEmail(
+                "Password Reset Code",
+                user.getEmail(),
+                user.getName(),
+                newCode
+            );
+            logger.info("Reset code sent successfully to email: {}", email);
         } catch (Exception e) {
+            logger.error("Failed to send reset code to email: {}", email, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to send reset code email"));
         }

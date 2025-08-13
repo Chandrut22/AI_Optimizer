@@ -68,8 +68,12 @@ jwt:
   refresh-token-expiration-ms: 604800000
 
 logging:
+  file:
+    name: logs/error.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%level] [%thread] %logger{36} - %msg%n"
   level:
-    org.springframework.security: DEBUG
+    root: TRACE  # Shows absolutely everything
 
 management:
   endpoints:
@@ -88,3 +92,5 @@ management:
     export:
       prometheus:
         enabled: true
+
+
