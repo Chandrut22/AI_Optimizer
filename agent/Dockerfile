@@ -4,13 +4,14 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
 
+# Install uv
 RUN pip install uv
-RUN uv venv .venv
-RUN .venv/bin/pip install --no-cache-dir .
+
+# Install project dependencies system-wide (no .venv needed in Docker)
+RUN uv pip install --system --no-cache-dir .
 
 COPY . .
 
-# Ensure /app is in Python path
 ENV PYTHONPATH=/app
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
