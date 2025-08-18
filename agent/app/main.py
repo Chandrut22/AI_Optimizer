@@ -1,5 +1,10 @@
+"""
+Main entrypoint for the FastAPI AI Agent service.
+"""
+
 import logging
 from fastapi import FastAPI
+
 from app.core.logging import configure_logging
 from app.middleware.security import setup_middlewares
 from app.middleware.request_logger import RequestLoggingMiddleware
@@ -7,23 +12,32 @@ from app.routers import ai, health
 
 
 def create_app() -> FastAPI:
-    # Initialize logging first
+    """
+    Factory function to create and configure the FastAPI application.
+    """
+    # --- Configure logging ---
     configure_logging()
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("app.main")
     logger.info("Bootstrapping FastAPI AI Agent service...")
 
-    app = FastAPI(title="AI Agent API", version="1.0.0")
+    # --- Initialize app ---
+    app = FastAPI(
+        title="AI Agent API",
+        version="1.0.0",
+        description="Backend service for AI agent with health checks, AI tasks, and authentication.",
+    )
 
-    # Middlewares
+    # --- Middlewares ---
     setup_middlewares(app)
     app.add_middleware(RequestLoggingMiddleware)
 
-    # Routers
-    app.include_router(health.router)
-    app.include_router(ai.router)
+    # --- Routers ---
+    app.include_router(health.router, prefix="/health", tags=["Health"])
+    app.include_router(ai.router, prefix="/ai", tags=["AI"])
 
     logger.info("Application ready.")
     return app
 
 
+# Application instance
 app = create_app()
