@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Callable
+from typing import Callable, Awaitable
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -9,23 +9,56 @@ logger = logging.getLogger("request")
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    """
+    Middleware for structured request/response logging.
+
+    - Logs method, path, status, IP, response time
+    - Does NOT log cookies or authorization headers
+    - Exceptions are logged at ERROR level with traceback
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         start = time.perf_counter()
-        path = request.url.path
+
         method = request.method
+        path = request.url.path
         client_ip = request.client.host if request.client else "unknown"
 
-        # Don’t log cookies or authorization headers
-        logger.info("REQ %s %s ip=%s", method, path, client_ip)
+        logger.info(
+            "Incoming request",
+            extra={
+                "method": method,
+                "path": path,
+                "ip": client_ip,
+            },
+        )
 
         try:
             response = await call_next(request)
         except Exception as e:
-            elapsed = (time.perf_counter() - start) * 1000
-            logger.exception("ERR %s %s ip=%s t_ms=%.2f err=%s", method, path, client_ip, elapsed, str(e))
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            logger.exception(
+                "Request failed",
+                extra={
+                    "method": method,
+                    "path": path,
+                    "ip": client_ip,
+                    "elapsed_ms": round(elapsed_ms, 2),
+                    "error": str(e),
+                },
+            )
             raise
 
-        elapsed = (time.perf_counter() - start) * 1000
-        logger.info("RES %s %s ip=%s status=%d t_ms=%.2f",
-                    method, path, client_ip, response.status_code, elapsed)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        logger.info(
+            "Request completed",
+            extra={
+                "method": method,
+                "path": path,
+                "ip": client_ip,
+                "status": response.status_code,
+                "elapsed_ms": round(elapsed_ms, 2),
+            },
+        )
+
         return response
