@@ -56,6 +56,7 @@ def configure_logging() -> None:
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("asyncio").setLevel(logging.WARNING)
+    logging.getLogger("watchfiles").setLevel(logging.WARNING)
 
     logging.getLogger("app.core.logging").info(
         f"Logging initialized with level={settings.LOG_LEVEL}, console=plain, file={log_file}"
