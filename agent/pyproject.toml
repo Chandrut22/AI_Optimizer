@@ -85,6 +85,7 @@ dependencies = [
     "pydantic==2.11.4",
     "pydantic-core==2.33.2",
     "pygments==2.19.1",
+    "pyjwt[crypto]==2.10.1",
     "pyparsing==3.2.1",
     "pyproject-hooks==1.2.0",
     "python-dateutil==2.9.0.post0",
