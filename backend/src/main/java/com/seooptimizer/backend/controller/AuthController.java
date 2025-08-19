@@ -176,6 +176,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         logger.info("Received login request for email: {}", request.getEmail());
+
         Optional<User> optionalUser = userRepository.findByEmail(request.getEmail());
         if (optionalUser.isEmpty()) {
             logger.warn("Login failed: User not found - {}", request.getEmail());
@@ -205,20 +206,22 @@ public class AuthController {
         String accessToken = jwtUtil.generateAccessToken(userDetails.getUsername());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getEmail());
 
+        // ✅ Access token cookie (short-lived, 15 min)
         ResponseCookie accessCookie = ResponseCookie.from("access_token", accessToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/")
-                .maxAge(15 * 60)
-                .sameSite("None")
+                .path("/")                  // sent with all requests
+                .sameSite("None")           // required for cross-site
+                .maxAge(15 * 60)            // 15 minutes
                 .build();
 
+        // ✅ Refresh token cookie (7 days, scoped only to refresh endpoint)
         ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refreshToken.getToken())
                 .httpOnly(true)
                 .secure(true)
-                .path("/")
-                .maxAge(7 * 24 * 60 * 60)
+                .path("/") // restrict usage only to refresh-token endpoint
                 .sameSite("None")
+                .maxAge(7 * 24 * 60 * 60)   // 7 days
                 .build();
 
         logger.info("Login successful for {}", request.getEmail());
@@ -228,6 +231,7 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(Map.of("message", "Login successful"));
     }
+
 
     @PostMapping("/refresh-token")
     public ResponseEntity<?> refreshToken(HttpServletRequest request) {
@@ -265,23 +269,26 @@ public class AuthController {
 
         logger.info("Rotating refresh token for user: {}", email);
 
+        // ✅ Rotate: delete old token + save new one
         refreshTokenService.deleteByToken(oldRefreshToken);
         String newRefreshToken = refreshTokenService.saveToken(email);
 
         String newAccessToken = jwtUtil.generateAccessToken(email);
 
+        // ✅ Access token cookie (15 min)
         ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", newAccessToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/")
+                .path("/")                   // access token should be sent everywhere
                 .maxAge(15 * 60)
                 .sameSite("None")
                 .build();
 
+        // ✅ Refresh token cookie (7 days, only for /api/auth/refresh-token)
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", newRefreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/")
+                .path("/") // 🔥 restrict to refresh endpoint
                 .maxAge(7 * 24 * 60 * 60)
                 .sameSite("None")
                 .build();
@@ -416,24 +423,32 @@ public class AuthController {
     public ResponseEntity<?> logout(HttpServletRequest request) {
         String clientIp = request.getRemoteAddr();
 
-        // Logging the logout request
         logger.info("Logout request received from IP: {}", clientIp);
 
+        // ✅ Delete access token cookie
         ResponseCookie deleteAccessToken = ResponseCookie.from("access_token", "")
                 .httpOnly(true)
                 .secure(true)
-                .path("/")
-                .maxAge(0) // Expire immediately
+                .path("/")              // matches login path
+                .maxAge(0)              // expire immediately
                 .sameSite("None")
                 .build();
 
+        // ✅ Delete refresh token cookie (path must match refresh-token)
         ResponseCookie deleteRefreshToken = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
                 .secure(true)
-                .path("/")
-                .maxAge(0) // Expire immediately
+                .path("/api/auth/refresh-token") // matches refresh cookie path
+                .maxAge(0)              // expire immediately
                 .sameSite("None")
                 .build();
+
+        // (Optional) Remove refresh token from DB if present
+        String refreshToken = jwtUtil.extractRefreshTokenFromCookie(request);
+        if (refreshToken != null) {
+            refreshTokenService.deleteByToken(refreshToken);
+            logger.info("Refresh token deleted from DB for IP: {}", clientIp);
+        }
 
         logger.info("Access and refresh tokens cleared for client IP: {}", clientIp);
 
