@@ -11,7 +11,6 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update  # Use 'update' or 'none' in production
-    # database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: true
     open-in-view: false
     properties:
@@ -42,8 +41,8 @@ spring:
 
     resources:
       add-mappings: true
+
   mvc:
-    # throw-exception-if-no-handler-found: true
     static-path-pattern: /static/**
 
   security:
@@ -67,13 +66,30 @@ jwt:
   access-token-expiration-ms: 900000
   refresh-token-expiration-ms: 604800000
 
+# ========================
+# Logging Configuration
+# ========================
 logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.tool.hbm2ddl: INFO
+    org.hibernate.type: INFO
+
   file:
-    name: logs/error.log
+    name: logs/app.log
+
+  logback:
+    rollingpolicy:
+      file-name-pattern: logs/app-%d{yyyy-MM-dd}.log
+      max-history: 7
+      total-size-cap: 100MB
+
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%level] [%thread] %logger{36} - %msg%n"
-  level:
-    root: TRACE  # Shows absolutely everything
 
 management:
   endpoints:
@@ -83,14 +99,9 @@ management:
   endpoint:
     metrics:
       enabled: true
-      
   server:
-    port:
-      8080
-
+    port: 8080
   metrics:
     export:
       prometheus:
         enabled: true
-
-
