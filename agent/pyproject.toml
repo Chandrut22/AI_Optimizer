@@ -13,4 +13,5 @@ dependencies = [
     "python-json-logger==3.3.0",
     "starlette==0.46.2",
     "typing-extensions==4.12.2",
+    "uvicorn==0.35.0",
 ]
