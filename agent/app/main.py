@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from app.core.logging import configure_logging
 from app.middleware.security import setup_middlewares
 from app.middleware.request_logger import RequestLoggingMiddleware
-from app.routers import ai, health
+from app.routers import ai, health, debug
 
 import logging
 
@@ -38,6 +38,7 @@ def create_app() -> FastAPI:
     # Routers
     app.include_router(health.router, prefix="/health", tags=["Health"])
     app.include_router(ai.router, prefix="/ai", tags=["AI"])
+    app.include_router(debug.router, prefix="/debug", tags=["Debug"])
 
     return app
 
