@@ -1,12 +1,33 @@
 import axios from "axios";
 
-// Create an Axios instance
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  withCredentials: true, // Important for sending HttpOnly cookies
+  withCredentials: true,
 });
 
-// ✅ Add interceptor to handle token refresh on 401
+// ✅ Store CSRF token globally
+let csrfToken = null;
+
+async function fetchCsrfToken() {
+  const response = await API.get("/csrf-token");
+  csrfToken = response.data.token;
+}
+
+// ✅ Add request interceptor to attach CSRF token
+API.interceptors.request.use(
+  async (config) => {
+    if (!csrfToken) {
+      await fetchCsrfToken(); // fetch if not available
+    }
+    if (csrfToken && ["post", "put", "delete"].includes(config.method)) {
+      config.headers["X-CSRF-TOKEN"] = csrfToken;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ✅ Response interceptor (your existing refresh logic)
 API.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -19,11 +40,9 @@ API.interceptors.response.use(
     ) {
       originalRequest._retry = true;
       try {
-        await API.post("/auth/refresh-token"); // ✅ FIXED
-
-        return API(originalRequest); // retry original request
+        await API.post("/auth/refresh-token");
+        return API(originalRequest);
       } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError);
         return Promise.reject(refreshError);
       }
     }
@@ -31,7 +50,6 @@ API.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
 
 export const getCurrentUser = async () => {
   const response = await API.get("/auth/me");
