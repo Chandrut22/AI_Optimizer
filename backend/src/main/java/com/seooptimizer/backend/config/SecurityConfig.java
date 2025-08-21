@@ -49,6 +49,7 @@ public class SecurityConfig {
                     "/login/**", 
                     "/oauth2/**", 
                     "/api/auth/**", 
+                    "/actuator/**",
                     "/site.webmanifest",
                     "/csrf-token"
                 ).permitAll()
