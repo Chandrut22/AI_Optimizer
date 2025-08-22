@@ -16,21 +16,25 @@ let csrfToken = null;
 let isFetchingCsrf = false;
 
 async function fetchCsrfToken() {
-  if (csrfToken || isFetchingCsrf) return csrfToken; // prevent race/loop
+  if (csrfToken || isFetchingCsrf) return csrfToken;
   isFetchingCsrf = true;
 
   try {
-    // ⛔ DON'T use API here! Use plain axios or a separate instance
     const { data } = await axios.get(
       `${import.meta.env.VITE_API_BASE_URL}/csrf-token`,
       { withCredentials: true }
     );
     csrfToken = data.token;
     return csrfToken;
+  } catch (err) {
+    console.error("❌ Failed to fetch CSRF token:", err.response?.status);
+    // return null instead of retrying forever
+    return null;
   } finally {
     isFetchingCsrf = false;
   }
 }
+
 
 // ---------------------------
 // ✅ Request Interceptor
