@@ -1,33 +1,61 @@
+// src/api/index.js
 import axios from "axios";
 
+// ---------------------------
+// Base API instance with creds
+// ---------------------------
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true,
 });
 
-// ✅ Store CSRF token globally
+// ---------------------------
+// ✅ CSRF Token Handling
+// ---------------------------
 let csrfToken = null;
+let isFetchingCsrf = false;
 
 async function fetchCsrfToken() {
-  const response = await API.get("/csrf-token");
-  csrfToken = response.data.token;
+  if (csrfToken || isFetchingCsrf) return csrfToken; // prevent race/loop
+  isFetchingCsrf = true;
+
+  try {
+    // ⛔ DON'T use API here! Use plain axios or a separate instance
+    const { data } = await axios.get(
+      `${import.meta.env.VITE_API_BASE_URL}/csrf-token`,
+      { withCredentials: true }
+    );
+    csrfToken = data.token;
+    return csrfToken;
+  } finally {
+    isFetchingCsrf = false;
+  }
 }
 
-// ✅ Add request interceptor to attach CSRF token
+// ---------------------------
+// ✅ Request Interceptor
+// ---------------------------
 API.interceptors.request.use(
   async (config) => {
     if (!csrfToken) {
-      await fetchCsrfToken(); // fetch if not available
+      await fetchCsrfToken();
     }
-    if (csrfToken && ["post", "put", "delete"].includes(config.method)) {
+
+    if (
+      csrfToken &&
+      ["post", "put", "delete"].includes(config.method?.toLowerCase())
+    ) {
       config.headers["X-CSRF-TOKEN"] = csrfToken;
     }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// ✅ Response interceptor (your existing refresh logic)
+// ---------------------------
+// ✅ Response Interceptor (Token Refresh)
+// ---------------------------
 API.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -51,16 +79,18 @@ API.interceptors.response.use(
   }
 );
 
+// ---------------------------
+// ✅ Exported API functions
+// ---------------------------
 export const getCurrentUser = async () => {
-  const response = await API.get("/auth/me");
-  return response.data;
+  const { data } = await API.get("/auth/me");
+  return data;
 };
 
 export const loginUser = async (email, password) => {
   try {
     await API.post("/auth/login", { email, password });
-    const user = await getCurrentUser();
-    return user;
+    return await getCurrentUser();
   } catch (error) {
     throw error.response?.data || { message: "Login failed" };
   }
@@ -68,8 +98,12 @@ export const loginUser = async (email, password) => {
 
 export const registerUser = async ({ name, email, password }) => {
   try {
-    const response = await API.post("/auth/register", { name, email, password });
-    return response.data;
+    const { data } = await API.post("/auth/register", {
+      name,
+      email,
+      password,
+    });
+    return data;
   } catch (error) {
     throw error.response?.data || { message: "Registration failed" };
   }
@@ -82,8 +116,8 @@ export const verifyEmailCode = async ({ email, code, type }) => {
     formData.append("code", code);
     formData.append("type", type);
 
-    const response = await API.post("/auth/verify-code", formData);
-    return response.data;
+    const { data } = await API.post("/auth/verify-code", formData);
+    return data;
   } catch (error) {
     throw error.response?.data || { message: "Verification failed" };
   }
@@ -91,10 +125,10 @@ export const verifyEmailCode = async ({ email, code, type }) => {
 
 export const resendVerificationCode = async (email) => {
   try {
-    const response = await API.post("/auth/resend-reset-code", null, {
+    const { data } = await API.post("/auth/resend-reset-code", null, {
       params: { email },
     });
-    return response.data;
+    return data;
   } catch (error) {
     throw error.response?.data || { message: "Resend failed" };
   }
@@ -105,8 +139,8 @@ export const forgotPassword = async (email) => {
     const formData = new FormData();
     formData.append("email", email);
 
-    const response = await API.post("/auth/forgot-password", formData);
-    return response.data;
+    const { data } = await API.post("/auth/forgot-password", formData);
+    return data;
   } catch (error) {
     throw error.response?.data || { message: "Request failed" };
   }
@@ -118,8 +152,8 @@ export const setNewPassword = async ({ email, newPassword }) => {
     formData.append("email", email);
     formData.append("newPassword", newPassword);
 
-    const response = await API.post("/auth/set-new-password", formData);
-    return response.data;
+    const { data } = await API.post("/auth/set-new-password", formData);
+    return data;
   } catch (error) {
     throw error.response?.data || { message: "Reset failed" };
   }
@@ -127,9 +161,11 @@ export const setNewPassword = async ({ email, newPassword }) => {
 
 export const logoutUser = async () => {
   try {
-    const response = await API.post("/auth/logout");
-    return response.data;
+    const { data } = await API.post("/auth/logout");
+    return data;
   } catch (error) {
     throw error.response?.data || { message: "Logout failed" };
   }
 };
+
+export default API;
