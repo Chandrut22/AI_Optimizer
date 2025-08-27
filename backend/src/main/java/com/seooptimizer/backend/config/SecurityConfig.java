@@ -51,7 +51,7 @@ public class SecurityConfig {
                     "/api/auth/**", 
                     "/actuator/**",
                     "/site.webmanifest",
-                    "/csrf-token"
+                    "/api/csrf-token"
                 ).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/me").authenticated() // secure this endpoint
