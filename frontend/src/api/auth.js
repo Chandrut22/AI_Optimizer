@@ -1,22 +1,17 @@
 // src/api/index.js
 import axios from "axios";
 
-// ---------------------------
-// Base API instance with creds
-// ---------------------------
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true,
 });
 
-// ---------------------------
-// ✅ CSRF Token Handling
-// ---------------------------
 let csrfToken = null;
 let isFetchingCsrf = false;
 
-async function fetchCsrfToken() {
-  if (csrfToken || isFetchingCsrf) return csrfToken;
+async function fetchCsrfToken(force = false) {
+  if (csrfToken && !force) return csrfToken;
+  if (isFetchingCsrf) return csrfToken;
   isFetchingCsrf = true;
 
   try {
@@ -28,43 +23,41 @@ async function fetchCsrfToken() {
     return csrfToken;
   } catch (err) {
     console.error("❌ Failed to fetch CSRF token:", err.response?.status);
-    // return null instead of retrying forever
     return null;
   } finally {
     isFetchingCsrf = false;
   }
 }
 
-
 // ---------------------------
 // ✅ Request Interceptor
 // ---------------------------
 API.interceptors.request.use(
   async (config) => {
-    if (!csrfToken) {
-      await fetchCsrfToken();
-    }
-
     if (
-      csrfToken &&
       ["post", "put", "delete"].includes(config.method?.toLowerCase())
     ) {
-      config.headers["X-CSRF-TOKEN"] = csrfToken;
+      if (!csrfToken) {
+        await fetchCsrfToken();
+      }
+      if (csrfToken) {
+        config.headers["X-CSRF-TOKEN"] = csrfToken;
+      }
     }
-
     return config;
   },
   (error) => Promise.reject(error)
 );
 
 // ---------------------------
-// ✅ Response Interceptor (Token Refresh)
+// ✅ Response Interceptor
 // ---------------------------
 API.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
+    // 401 → try refresh
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
@@ -79,9 +72,21 @@ API.interceptors.response.use(
       }
     }
 
+    // 403 → CSRF token mismatch → refetch + retry once
+    if (
+      error.response?.status === 403 &&
+      !originalRequest._csrfRetry
+    ) {
+      originalRequest._csrfRetry = true;
+      await fetchCsrfToken(true); // force refresh
+      originalRequest.headers["X-CSRF-TOKEN"] = csrfToken;
+      return API(originalRequest);
+    }
+
     return Promise.reject(error);
   }
 );
+
 
 // ---------------------------
 // ✅ Exported API functions
