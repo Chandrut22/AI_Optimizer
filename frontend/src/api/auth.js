@@ -66,21 +66,18 @@ API.interceptors.response.use(
       originalRequest._retry = true;
       try {
         await API.post("/auth/refresh-token");
-        return API(originalRequest);
+        return API({ ...originalRequest, method: originalRequest.method || "post" });
       } catch (refreshError) {
         return Promise.reject(refreshError);
       }
     }
 
-    // 403 → CSRF token mismatch → refetch + retry once
-    if (
-      error.response?.status === 403 &&
-      !originalRequest._csrfRetry
-    ) {
+    // 403 → CSRF token mismatch
+    if (error.response?.status === 403 && !originalRequest._csrfRetry) {
       originalRequest._csrfRetry = true;
-      await fetchCsrfToken(true); // force refresh
+      await fetchCsrfToken(true);
       originalRequest.headers["X-CSRF-TOKEN"] = csrfToken;
-      return API(originalRequest);
+      return API({ ...originalRequest, method: originalRequest.method || "post" });
     }
 
     return Promise.reject(error);
