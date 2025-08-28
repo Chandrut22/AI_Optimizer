@@ -3,23 +3,26 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  withCredentials: true,
+  withCredentials: true, // send cookies (XSRF-TOKEN, refresh, access)
 });
 
+// ---------------------------
+// 🔐 CSRF Token Handling
+// ---------------------------
 let csrfToken = null;
 let isFetchingCsrf = false;
 
 async function fetchCsrfToken(force = false) {
   if (csrfToken && !force) return csrfToken;
   if (isFetchingCsrf) return csrfToken;
-  isFetchingCsrf = true;
 
+  isFetchingCsrf = true;
   try {
     const { data } = await axios.get(
       `${import.meta.env.VITE_API_BASE_URL}/csrf-token`,
       { withCredentials: true }
     );
-    csrfToken = data.token;
+    csrfToken = data.token; // syncs with cookie "XSRF-TOKEN"
     return csrfToken;
   } catch (err) {
     console.error("❌ Failed to fetch CSRF token:", err.response?.status);
@@ -30,13 +33,12 @@ async function fetchCsrfToken(force = false) {
 }
 
 // ---------------------------
-// ✅ Request Interceptor
+// 📌 Request Interceptor
 // ---------------------------
 API.interceptors.request.use(
   async (config) => {
-    if (
-      ["post", "put", "delete"].includes(config.method?.toLowerCase())
-    ) {
+    const method = config.method?.toLowerCase();
+    if (["post", "put", "delete", "patch"].includes(method)) {
       if (!csrfToken) {
         await fetchCsrfToken();
       }
@@ -50,43 +52,51 @@ API.interceptors.request.use(
 );
 
 // ---------------------------
-// ✅ Response Interceptor
+// 📌 Response Interceptor
 // ---------------------------
 API.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // 401 → try refresh
+    // 🔄 Handle expired access token → refresh
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      originalRequest.url !== "/auth/refresh-token"
+      !originalRequest.url.includes("/auth/refresh-token")
     ) {
       originalRequest._retry = true;
       try {
+        // Always call refresh as POST
         await API.post("/auth/refresh-token");
-        return API({ ...originalRequest, method: originalRequest.method || "post" });
+
+        // Replay original request with the correct method
+        return API({
+          ...originalRequest,
+          method: originalRequest.method || "post",
+        });
       } catch (refreshError) {
         return Promise.reject(refreshError);
       }
     }
 
-    // 403 → CSRF token mismatch
+    // 🔄 Handle CSRF mismatch → fetch new token
     if (error.response?.status === 403 && !originalRequest._csrfRetry) {
       originalRequest._csrfRetry = true;
       await fetchCsrfToken(true);
       originalRequest.headers["X-CSRF-TOKEN"] = csrfToken;
-      return API({ ...originalRequest, method: originalRequest.method || "post" });
+      return API({
+        ...originalRequest,
+        method: originalRequest.method || "post",
+      });
     }
 
     return Promise.reject(error);
   }
 );
 
-
 // ---------------------------
-// ✅ Exported API functions
+// ✅ API Functions
 // ---------------------------
 export const getCurrentUser = async () => {
   const { data } = await API.get("/auth/me");
