@@ -38,7 +38,9 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                .ignoringRequestMatchers("/api/auth/login", "/api/auth/register","/csrf-token","/api/auth/refresh-token")
+                .ignoringRequestMatchers("/api/auth/login", "/api/auth/register","/csrf-token"
+                                            // ,"/api/auth/refresh-token"
+                                            )
             )
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
