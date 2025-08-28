@@ -15,13 +15,14 @@ public class CsrfController {
 
     @GetMapping("/csrf-token")
     public Map<String, String> csrf(HttpServletRequest request) {
+        // Spring Security automatically attaches CsrfToken to the request
         CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
 
         if (token == null) {
-            return Map.of("csrfToken", "missing");
+            throw new IllegalStateException("CSRF token not available. Check SecurityConfig setup.");
         }
 
-        // Spring Security also sets XSRF-TOKEN cookie automatically
+        // ✅ Return the SAME token that was already set in the XSRF-TOKEN cookie
         return Map.of("csrfToken", token.getToken());
     }
 }

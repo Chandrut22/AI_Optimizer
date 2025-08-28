@@ -37,11 +37,15 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                .ignoringRequestMatchers("/api/auth/login", "/api/auth/register","/csrf-token"
-                                            // ,"/api/auth/refresh-token"
-                                            )
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()) 
+                .ignoringRequestMatchers(
+                    "/api/auth/login",
+                    "/api/auth/register",
+                    "/api/csrf-token" // allow token fetch without CSRF
+                    // "/api/auth/refresh-token" <-- keep this protected if you want CSRF check
+                )
             )
+
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exception -> exception.authenticationEntryPoint(restAuthenticationEntryPoint))
