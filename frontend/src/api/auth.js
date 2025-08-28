@@ -55,40 +55,32 @@ API.interceptors.request.use(
 // 📌 Response Interceptor
 // ---------------------------
 API.interceptors.response.use(
-  (response) => response,
+  (response) => response, // if success, just return response
   async (error) => {
     const originalRequest = error.config;
 
-    // 🔄 Handle expired access token → refresh
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url.includes("/auth/refresh-token")
-    ) {
-      originalRequest._retry = true;
-      try {
-        // Always call refresh as POST
-        await API.post("/auth/refresh-token");
-
-        // Replay original request with the correct method
-        return API({
-          ...originalRequest,
-          method: originalRequest.method || "post",
-        });
-      } catch (refreshError) {
-        return Promise.reject(refreshError);
-      }
+    // ✅ If no response (network/CORS error), just reject
+    if (!error.response) {
+      return Promise.reject(error);
     }
 
-    // 🔄 Handle CSRF mismatch → fetch new token
-    if (error.response?.status === 403 && !originalRequest._csrfRetry) {
-      originalRequest._csrfRetry = true;
-      await fetchCsrfToken(true);
-      originalRequest.headers["X-CSRF-TOKEN"] = csrfToken;
-      return API({
-        ...originalRequest,
-        method: originalRequest.method || "post",
-      });
+    // ✅ If 401, try refreshing
+    if (
+      error.response.status === 401 &&
+      !originalRequest._retry
+    ) {
+      originalRequest._retry = true;
+
+      try {
+        // Call refresh endpoint
+        await API.post("/auth/refresh-token", {}, { withCredentials: true });
+
+        // Retry original request
+        return API(originalRequest);
+      } catch (refreshError) {
+        console.error("Refresh token failed", refreshError);
+        return Promise.reject(refreshError);
+      }
     }
 
     return Promise.reject(error);
