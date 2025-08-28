@@ -3,82 +3,77 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  withCredentials: true, // send cookies (XSRF-TOKEN, refresh, access)
+  withCredentials: true, // ✅ send cookies
 });
 
-// ---------------------------
-// 🔐 CSRF Token Handling
-// ---------------------------
+// ✅ Store CSRF token globally
 let csrfToken = null;
-let isFetchingCsrf = false;
 
-async function fetchCsrfToken(force = false) {
-  if (csrfToken && !force) return csrfToken;
-  if (isFetchingCsrf) return csrfToken;
-
-  isFetchingCsrf = true;
+// 📌 Function to fetch CSRF token (from backend)
+async function fetchCsrfToken() {
   try {
-    const { data } = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/csrf-token`,
-      { withCredentials: true }
-    );
-    csrfToken = data.token; // syncs with cookie "XSRF-TOKEN"
-    return csrfToken;
-  } catch (err) {
-    console.error("❌ Failed to fetch CSRF token:", err.response?.status);
-    return null;
-  } finally {
-    isFetchingCsrf = false;
+    const response = await API.get("/csrf-token", { withCredentials: true });
+
+    // Spring Security sets XSRF-TOKEN cookie → backend also returns in JSON
+    csrfToken = response.data.token;
+
+    console.log("🔑 CSRF Token Fetched:", csrfToken);
+  } catch (error) {
+    console.error("❌ Failed to fetch CSRF token:", error);
   }
 }
 
-// ---------------------------
 // 📌 Request Interceptor
-// ---------------------------
 API.interceptors.request.use(
   async (config) => {
     const method = config.method?.toLowerCase();
+
+    // Only attach CSRF for state-changing requests
     if (["post", "put", "delete", "patch"].includes(method)) {
       if (!csrfToken) {
         await fetchCsrfToken();
       }
+
       if (csrfToken) {
-        config.headers["X-CSRF-TOKEN"] = csrfToken;
+        // ✅ Spring Security expects this exact header
+        config.headers["X-XSRF-TOKEN"] = csrfToken;
       }
     }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// ---------------------------
-// 📌 Response Interceptor
-// ---------------------------
+// 📌 Response Interceptor (handles 401 → refresh token)
 API.interceptors.response.use(
-  (response) => response, // if success, just return response
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // ✅ If no response (network/CORS error), just reject
     if (!error.response) {
       return Promise.reject(error);
     }
 
-    // ✅ If 401, try refreshing
-    if (
-      error.response.status === 401 &&
-      !originalRequest._retry
-    ) {
+    // ❌ If refresh itself fails, don’t retry
+    if (originalRequest.url.includes("/auth/refresh-token")) {
+      return Promise.reject(error);
+    }
+
+    // 🔄 If 401, try refreshing once
+    if (error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // Call refresh endpoint
+        console.log("🔄 Attempting token refresh...");
+
         await API.post("/auth/refresh-token", {}, { withCredentials: true });
 
-        // Retry original request
-        return API(originalRequest);
+        console.log("✅ Token refresh successful, retrying request...");
+
+        return API(originalRequest); // Retry original request
       } catch (refreshError) {
-        console.error("Refresh token failed", refreshError);
+        console.error("❌ Refresh token failed:", refreshError);
         return Promise.reject(refreshError);
       }
     }
@@ -86,6 +81,7 @@ API.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 
 // ---------------------------
 // ✅ API Functions
