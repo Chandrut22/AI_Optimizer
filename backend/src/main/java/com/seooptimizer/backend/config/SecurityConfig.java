@@ -1,5 +1,6 @@
 package com.seooptimizer.backend.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -12,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -21,7 +23,7 @@ import com.seooptimizer.backend.security.JwtAuthenticationFilter;
 import com.seooptimizer.backend.security.OAuth2SuccessHandler;
 import com.seooptimizer.backend.security.RestAuthenticationEntryPoint;
 
-import lombok.RequiredArgsConstructor;
+import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
@@ -33,48 +35,62 @@ public class SecurityConfig {
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final CorsConfig corsConfig;
 
+    private CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository repo = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        // Keep the standards we use on the frontend:
+        repo.setCookieName("XSRF-TOKEN");       // cookie name
+        repo.setHeaderName("X-CSRF-TOKEN");     // header name that Axios will send
+        repo.setCookiePath("/");                // send cookie everywhere
+        return repo;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // CSRF
             .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()) 
+                .csrfTokenRepository(csrfTokenRepository())
+                // Don’t require CSRF for login/register (no session yet).
                 .ignoringRequestMatchers(
-                    "/api/auth/login",
-                    "/api/auth/register",
-                    "/api/csrf-token" // allow token fetch without CSRF
-                    // "/api/auth/refresh-token" <-- keep this protected if you want CSRF check
+                    new AntPathRequestMatcher("/api/auth/login", "POST"),
+                    new AntPathRequestMatcher("/api/auth/register", "POST")
                 )
             )
-
+            // CORS
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            // Stateless JWT
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // 401 handler
             .exceptionHandling(exception -> exception.authenticationEntryPoint(restAuthenticationEntryPoint))
+            // Authorization
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/", 
-                    "/login/**", 
-                    "/oauth2/**", 
-                    "/api/auth/**", 
-                    "/actuator/**",
-                    "/site.webmanifest",
-                    "/api/csrf-token"
-                ).permitAll()
+                // OPEN endpoints
+                .requestMatchers(HttpMethod.GET, "/api/csrf-token").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/refresh-token").permitAll() // no auth, but CSRF applies
+                .requestMatchers("/", "/login/**", "/oauth2/**", "/actuator/**", "/site.webmanifest").permitAll()
+
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/me").authenticated() // secure this endpoint
+
+                // PROTECTED endpoints
+                .requestMatchers("/api/auth/me").authenticated()
+
+                // Everything else requires auth
                 .anyRequest().authenticated()
             )
+            // OAuth2 (if you use it)
             .oauth2Login(oauth -> oauth
                 .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                 .successHandler(oAuth2SuccessHandler)
             )
+            // JWT filter
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * Optional: Only needed if dealing with non-browser clients that need a dedicated CORS filter.
-     */
+    // Dedicated CORS filter (optional but handy for non-browser clients too)
     @Bean
     public CorsFilter corsFilter() {
         return new CorsFilter(corsConfigurationSource());
@@ -82,10 +98,13 @@ public class SecurityConfig {
 
     private UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(corsConfig.getAllowedOrigins());
-        config.setAllowedMethods(corsConfig.getAllowedMethods());
-        config.setAllowedHeaders(corsConfig.getAllowedHeaders());
-        config.setAllowCredentials(corsConfig.isAllowCredentials());
+        // IMPORTANT: Must be explicit domains when credentials=true
+        config.setAllowedOrigins(corsConfig.getAllowedOrigins()); // e.g. ["https://app.example.com"]
+        config.setAllowedMethods(corsConfig.getAllowedMethods()); // e.g. ["GET","POST","PUT","DELETE","OPTIONS"]
+        config.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-CSRF-TOKEN"));
+        config.setAllowCredentials(true);
+        // Optional:
+        // config.setExposedHeaders(List.of("Set-Cookie"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

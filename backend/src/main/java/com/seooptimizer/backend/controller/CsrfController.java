@@ -1,28 +1,32 @@
 package com.seooptimizer.backend.controller;
 
-import java.util.Map;
-
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/api")
 public class CsrfController {
 
-    @GetMapping("/csrf-token")
-    public Map<String, String> csrf(HttpServletRequest request) {
-        // Spring Security automatically attaches CsrfToken to the request
-        CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+    @GetMapping("/api/csrf-token")
+    public ResponseEntity<Map<String, String>> getCsrfToken(HttpServletRequest request) {
+        CsrfToken csrf = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
 
-        if (token == null) {
-            throw new IllegalStateException("CSRF token not available. Check SecurityConfig setup.");
-        }
+        // Overwrite cookie so cookie value == JSON value
+        ResponseCookie cookie = ResponseCookie.from("XSRF-TOKEN", csrf.getToken())
+            .httpOnly(false)          // frontend reads it
+            .secure(true)             // PRODUCTION: HTTPS only
+            .sameSite("None")         // cross-site SPA (Vercel/Netlify/etc.)
+            .path("/")
+            .build();
 
-        // ✅ Return the SAME token that was already set in the XSRF-TOKEN cookie
-        return Map.of("csrfToken", token.getToken());
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, cookie.toString())
+            .body(Map.of("token", csrf.getToken())); // matches cookie
     }
 }
