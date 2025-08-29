@@ -2,174 +2,179 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  withCredentials: true, // ✅ send cookies
+  baseURL: import.meta.env.VITE_API_BASE_URL, // e.g. "https://api.example.com"
+  withCredentials: true,                      // send/receive cookies
 });
 
-// ✅ Store CSRF token globally
+// ---------------------------
+// CSRF handling
+// ---------------------------
 let csrfToken = null;
+let isFetching = false;
 
-// 📌 Function to fetch CSRF token (from backend)
-async function fetchCsrfToken() {
+function getCookie(name) {
+  // Minimal cookie reader for non-HTTPOnly cookies
+  return document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(name + "="))
+    ?.split("=")[1];
+}
+
+async function fetchCsrfToken(force = false) {
+  if (csrfToken && !force) return csrfToken;
+  if (isFetching) return csrfToken;
+
+  isFetching = true;
   try {
-    const response = await API.get("/csrf-token", { withCredentials: true });
-
-    // Spring Security sets XSRF-TOKEN cookie → backend also returns in JSON
-    csrfToken = response.data.token;
-
-    console.log("🔑 CSRF Token Fetched:", csrfToken);
-  } catch (error) {
-    console.error("❌ Failed to fetch CSRF token:", error);
+    const { data } = await axios.get(
+      `${import.meta.env.VITE_API_BASE_URL}/api/csrf-token`,
+      { withCredentials: true }
+    );
+    // Prefer body; fallback to cookie if needed
+    csrfToken = data?.token || getCookie("XSRF-TOKEN") || null;
+    return csrfToken;
+  } finally {
+    isFetching = false;
   }
 }
 
-// 📌 Request Interceptor
+// ---------------------------
+// Request interceptor
+// ---------------------------
 API.interceptors.request.use(
   async (config) => {
-    const method = config.method?.toLowerCase();
-
-    // Only attach CSRF for state-changing requests
-    if (["post", "put", "delete", "patch"].includes(method)) {
-      if (!csrfToken) {
-        await fetchCsrfToken();
-      }
-
+    const method = (config.method || "get").toLowerCase();
+    if (["post", "put", "patch", "delete"].includes(method)) {
+      if (!csrfToken) await fetchCsrfToken();
       if (csrfToken) {
-        // ✅ Spring Security expects this exact header
-        config.headers["X-XSRF-TOKEN"] = csrfToken;
+        config.headers = config.headers || {};
+        config.headers["X-CSRF-TOKEN"] = csrfToken;  // matches SecurityConfig
       }
     }
-
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// 📌 Response Interceptor (handles 401 → refresh token)
+// ---------------------------
+// Response interceptor
+// ---------------------------
 API.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const resp = error.response;
+    const original = error.config;
 
-    if (!error.response) {
-      return Promise.reject(error);
-    }
+    // If no response (network error), just bubble up
+    if (!resp || !original) return Promise.reject(error);
 
-    // ❌ If refresh itself fails, don’t retry
-    if (originalRequest.url.includes("/auth/refresh-token")) {
-      return Promise.reject(error);
-    }
+    // Avoid infinite loops
+    if (original._retry) return Promise.reject(error);
 
-    // 🔄 If 401, try refreshing once
-    if (error.response.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+    // Helper to replay exactly the same request
+    const replay = () =>
+      API.request({
+        url: original.url,
+        method: original.method,
+        headers: original.headers,
+        params: original.params,
+        data: original.data,
+        withCredentials: true,
+      });
 
+    // 401 → try refresh (POST, never GET)
+    if (resp.status === 401 && original.url !== "/api/auth/refresh-token") {
+      original._retry = true;
       try {
-        console.log("🔄 Attempting token refresh...");
-
-        await API.post("/auth/refresh-token", {}, { withCredentials: true });
-
-        console.log("✅ Token refresh successful, retrying request...");
-
-        return API(originalRequest); // Retry original request
-      } catch (refreshError) {
-        console.error("❌ Refresh token failed:", refreshError);
-        return Promise.reject(refreshError);
+        // Ensure CSRF header for refresh
+        if (!csrfToken) await fetchCsrfToken(true);
+        await API.post("/api/auth/refresh-token", null, {
+          headers: csrfToken ? { "X-CSRF-TOKEN": csrfToken } : {},
+          withCredentials: true,
+        });
+        // Optionally re-fetch CSRF (not strictly required)
+        await fetchCsrfToken(true);
+        return replay();
+      } catch (e) {
+        return Promise.reject(e);
       }
+    }
+
+    // 403 → CSRF mismatch → refresh token then replay once
+    if (resp.status === 403 && !original._csrfRetry) {
+      original._csrfRetry = true;
+      await fetchCsrfToken(true);
+      // ensure header present on replay if it’s a mutating call
+      const method = (original.method || "get").toLowerCase();
+      if (["post", "put", "patch", "delete"].includes(method) && csrfToken) {
+        original.headers = original.headers || {};
+        original.headers["X-CSRF-TOKEN"] = csrfToken;
+      }
+      return replay();
     }
 
     return Promise.reject(error);
   }
 );
 
-
 // ---------------------------
-// ✅ API Functions
+// API helpers
 // ---------------------------
 export const getCurrentUser = async () => {
-  const { data } = await API.get("/auth/me");
+  const { data } = await API.get("/api/auth/me");
   return data;
 };
 
 export const loginUser = async (email, password) => {
-  try {
-    await API.post("/auth/login", { email, password });
-    return await getCurrentUser();
-  } catch (error) {
-    throw error.response?.data || { message: "Login failed" };
-  }
+  // fetch CSRF first to avoid the very first POST failing
+  await fetchCsrfToken();
+  await API.post("/api/auth/login", { email, password });
+  return getCurrentUser();
 };
 
 export const registerUser = async ({ name, email, password }) => {
-  try {
-    const { data } = await API.post("/auth/register", {
-      name,
-      email,
-      password,
-    });
-    return data;
-  } catch (error) {
-    throw error.response?.data || { message: "Registration failed" };
-  }
+  await fetchCsrfToken();
+  const { data } = await API.post("/api/auth/register", { name, email, password });
+  return data;
 };
 
 export const verifyEmailCode = async ({ email, code, type }) => {
-  try {
-    const formData = new FormData();
-    formData.append("email", email);
-    formData.append("code", code);
-    formData.append("type", type);
-
-    const { data } = await API.post("/auth/verify-code", formData);
-    return data;
-  } catch (error) {
-    throw error.response?.data || { message: "Verification failed" };
-  }
+  await fetchCsrfToken();
+  const form = new FormData();
+  form.append("email", email);
+  form.append("code", code);
+  form.append("type", type);
+  const { data } = await API.post("/api/auth/verify-code", form);
+  return data;
 };
 
 export const resendVerificationCode = async (email) => {
-  try {
-    const { data } = await API.post("/auth/resend-reset-code", null, {
-      params: { email },
-    });
-    return data;
-  } catch (error) {
-    throw error.response?.data || { message: "Resend failed" };
-  }
+  await fetchCsrfToken();
+  const { data } = await API.post("/api/auth/resend-reset-code", null, { params: { email } });
+  return data;
 };
 
 export const forgotPassword = async (email) => {
-  try {
-    const formData = new FormData();
-    formData.append("email", email);
-
-    const { data } = await API.post("/auth/forgot-password", formData);
-    return data;
-  } catch (error) {
-    throw error.response?.data || { message: "Request failed" };
-  }
+  await fetchCsrfToken();
+  const form = new FormData();
+  form.append("email", email);
+  const { data } = await API.post("/api/auth/forgot-password", form);
+  return data;
 };
 
 export const setNewPassword = async ({ email, newPassword }) => {
-  try {
-    const formData = new FormData();
-    formData.append("email", email);
-    formData.append("newPassword", newPassword);
-
-    const { data } = await API.post("/auth/set-new-password", formData);
-    return data;
-  } catch (error) {
-    throw error.response?.data || { message: "Reset failed" };
-  }
+  await fetchCsrfToken();
+  const form = new FormData();
+  form.append("email", email);
+  form.append("newPassword", newPassword);
+  const { data } = await API.post("/api/auth/set-new-password", form);
+  return data;
 };
 
 export const logoutUser = async () => {
-  try {
-    const { data } = await API.post("/auth/logout");
-    return data;
-  } catch (error) {
-    throw error.response?.data || { message: "Logout failed" };
-  }
+  await fetchCsrfToken();
+  const { data } = await API.post("/api/auth/logout");
+  return data;
 };
 
 export default API;
