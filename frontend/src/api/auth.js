@@ -27,7 +27,7 @@ async function fetchCsrfToken(force = false) {
   isFetching = true;
   try {
     const { data } = await axios.get(
-      `${import.meta.env.VITE_API_BASE_URL}/api/csrf-token`,
+      `${import.meta.env.VITE_API_BASE_URL}/csrf-token`,
       { withCredentials: true }
     );
     // Prefer body; fallback to cookie if needed
@@ -83,12 +83,12 @@ API.interceptors.response.use(
       });
 
     // 401 → try refresh (POST, never GET)
-    if (resp.status === 401 && original.url !== "/api/auth/refresh-token") {
+    if (resp.status === 401 && original.url !== "/auth/refresh-token") {
       original._retry = true;
       try {
         // Ensure CSRF header for refresh
         if (!csrfToken) await fetchCsrfToken(true);
-        await API.post("/api/auth/refresh-token", null, {
+        await API.post("/auth/refresh-token", null, {
           headers: csrfToken ? { "X-CSRF-TOKEN": csrfToken } : {},
           withCredentials: true,
         });
@@ -121,20 +121,20 @@ API.interceptors.response.use(
 // API helpers
 // ---------------------------
 export const getCurrentUser = async () => {
-  const { data } = await API.get("/api/auth/me");
+  const { data } = await API.get("/auth/me");
   return data;
 };
 
 export const loginUser = async (email, password) => {
   // fetch CSRF first to avoid the very first POST failing
   await fetchCsrfToken();
-  await API.post("/api/auth/login", { email, password });
+  await API.post("/auth/login", { email, password });
   return getCurrentUser();
 };
 
 export const registerUser = async ({ name, email, password }) => {
   await fetchCsrfToken();
-  const { data } = await API.post("/api/auth/register", { name, email, password });
+  const { data } = await API.post("/auth/register", { name, email, password });
   return data;
 };
 
@@ -144,13 +144,13 @@ export const verifyEmailCode = async ({ email, code, type }) => {
   form.append("email", email);
   form.append("code", code);
   form.append("type", type);
-  const { data } = await API.post("/api/auth/verify-code", form);
+  const { data } = await API.post("/auth/verify-code", form);
   return data;
 };
 
 export const resendVerificationCode = async (email) => {
   await fetchCsrfToken();
-  const { data } = await API.post("/api/auth/resend-reset-code", null, { params: { email } });
+  const { data } = await API.post("/auth/resend-reset-code", null, { params: { email } });
   return data;
 };
 
@@ -158,7 +158,7 @@ export const forgotPassword = async (email) => {
   await fetchCsrfToken();
   const form = new FormData();
   form.append("email", email);
-  const { data } = await API.post("/api/auth/forgot-password", form);
+  const { data } = await API.post("/auth/forgot-password", form);
   return data;
 };
 
@@ -167,13 +167,13 @@ export const setNewPassword = async ({ email, newPassword }) => {
   const form = new FormData();
   form.append("email", email);
   form.append("newPassword", newPassword);
-  const { data } = await API.post("/api/auth/set-new-password", form);
+  const { data } = await API.post("/auth/set-new-password", form);
   return data;
 };
 
 export const logoutUser = async () => {
   await fetchCsrfToken();
-  const { data } = await API.post("/api/auth/logout");
+  const { data } = await API.post("/auth/logout");
   return data;
 };
 
