@@ -1,6 +1,7 @@
 package com.seooptimizer.backend.security;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -11,6 +12,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -30,25 +32,46 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String requestURI = request.getRequestURI();
-        String authHeader = request.getHeader("Authorization");
-
         System.out.println("[JwtFilter] Incoming request: " + requestURI);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            System.out.println("[JwtFilter] No Authorization header or invalid format.");
+        // 1. Try Authorization header first
+        String authHeader = request.getHeader("Authorization");
+        String jwtToken = null;
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwtToken = authHeader.substring(7);
+            System.out.println("[JwtFilter] Token extracted from Authorization header.");
+        } else {
+            // 2. Fallback: try HttpOnly cookie "access_token"
+            if (request.getCookies() != null) {
+                jwtToken = Arrays.stream(request.getCookies())
+                        .filter(c -> "access_token".equals(c.getName()))
+                        .findFirst()
+                        .map(Cookie::getValue)
+                        .orElse(null);
+
+                if (jwtToken != null) {
+                    System.out.println("[JwtFilter] Token extracted from access_token cookie.");
+                } else {
+                    System.out.println("[JwtFilter] No token found in header or cookie.");
+                }
+            }
+        }
+
+        if (jwtToken == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String jwtToken = authHeader.substring(7);
+        // 3. Extract email (username) from JWT
         String email = jwtUtil.extractUsername(jwtToken);
-
         if (email == null) {
             System.out.println("[JwtFilter] Token does not contain a valid username.");
             filterChain.doFilter(request, response);
             return;
         }
 
+        // 4. Authenticate if not already in SecurityContext
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
