@@ -13,7 +13,7 @@ import PanelPage from './pages/PanelPage';
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { AuthProvider } from './context/AuthContext.jsx';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import AdminLayout from './pages/admin/AdminLayout.jsx';
+import AdminLayout from './components/AdminLayout.jsx';
 import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
 import Analytics from './pages/admin/Analytics.jsx';
