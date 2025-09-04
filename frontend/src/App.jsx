@@ -13,6 +13,11 @@ import PanelPage from './pages/PanelPage';
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { AuthProvider } from './context/AuthContext.jsx';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import AdminLayout from './pages/admin/AdminLayout.jsx';
+import AdminDashboard from './pages/admin/AdminDashboard.jsx';
+import UserManagement from './pages/admin/UserManagement.jsx';
+import Analytics from './pages/admin/Analytics.jsx';
+import Settings from './pages/admin/Settings.jsx';
 
 const queryClient = new QueryClient();
 
@@ -32,6 +37,12 @@ const App = () => {
                             <Route path='/reset-password' element={<ResetPasswordPage />}/>
                             <Route path="/oauth-success" element={<OAuthSuccess />} />
                             <Route path="/dashboard" element={<ProtectedRoute> <PanelPage /> </ProtectedRoute>} /> 
+                            <Route path='/admin' element={<AdminLayout />}>
+                                <Route index element={<AdminDashboard />} />
+                                <Route path='users' element={<UserManagement />} />
+                                <Route path='analytics' element={<Analytics />} />
+                                <Route path='settings' element={<Settings />} />
+                            </Route>
                         </Routes>
                         <SpeedInsights />
                     </AuthProvider>
