@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
@@ -9,35 +9,18 @@ import { useAuth } from "@/context/AuthContext";
 const PanelPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth(); // Auth context
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user === null) {
-      navigate("/login");
-    } else {
-      setLoading(false);
-    }
-  }, [user, navigate]);
-
-  const handleLogout = () => {
-    logout();             // remove cookie and user
-    navigate("/login");   // redirect to login
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen text-gray-600 dark:text-gray-300">
-        Loading...
-      </div>
-    );
-  }
-
-  if (!user) return null;
+  if (!user) return null; // ProtectedRoute ensures user exists
 
   const role = user.role || "USER";
   const roleLower = role.toLowerCase();
   const email = user.email;
   const name = user.name;
+
+  const handleLogout = async () => {
+    await logout(); // clear cookie + state
+    // no need for navigate("/login") — ProtectedRoute handles redirect
+  };
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0F172A] flex flex-col">

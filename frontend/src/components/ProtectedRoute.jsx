@@ -1,15 +1,30 @@
-  // src/components/ProtectedRoute.jsx
-  import { Navigate } from "react-router-dom";
-  import { useAuth } from "@/context/AuthContext";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
-  const ProtectedRoute = ({ children }) => {
-    const { user, loading } = useAuth();
+const ProtectedRoute = ({ children, requiredRole }) => {
+  const { user, loading } = useAuth();
 
-    if (loading) return <div className="p-4 text-center">Loading...</div>;
+  // Still checking authentication (loading state from AuthContext)
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen text-gray-600 dark:text-gray-300">
+        Checking session...
+      </div>
+    );
+  }
 
-    if (!user) return <Navigate to="/login" replace />;
+  // No user → redirect to login
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
-    return children;
-  };
+  // Role restriction check
+  if (requiredRole && user.role !== requiredRole) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
-  export default ProtectedRoute;
+  // ✅ Authenticated and authorized → render children
+  return children;
+};
+
+export default ProtectedRoute;

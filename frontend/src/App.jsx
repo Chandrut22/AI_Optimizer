@@ -36,12 +36,20 @@ const App = () => {
                             <Route path='/forgot-password' element={<ForgotPasswordPage />} />
                             <Route path='/reset-password' element={<ResetPasswordPage />}/>
                             <Route path="/oauth-success" element={<OAuthSuccess />} />
-                            <Route path="/dashboard" element={<ProtectedRoute> <PanelPage /> </ProtectedRoute>} /> 
-                            <Route path='/admin' element={<AdminLayout />}>
+                            <Route path="/dashboard" element={ <ProtectedRoute> <PanelPage /> </ProtectedRoute>}/>
+
+                            <Route
+                                path="/admin"
+                                element={
+                                    <ProtectedRoute requiredRole="ADMIN">
+                                    <AdminLayout />
+                                    </ProtectedRoute>
+                                }
+                                >
                                 <Route index element={<AdminDashboard />} />
-                                <Route path='users' element={<UserManagement />} />
-                                <Route path='analytics' element={<Analytics />} />
-                                <Route path='settings' element={<Settings />} />
+                                <Route path="users" element={<UserManagement />} />
+                                <Route path="analytics" element={<Analytics />} />
+                                <Route path="settings" element={<Settings />} />
                             </Route>
                         </Routes>
                         <SpeedInsights />
