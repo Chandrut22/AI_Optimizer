@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+// src/layouts/AdminLayout.jsx
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "./ThemeProvider";
+import { useAuth } from "@/context/AuthContext"; // ✅ Use AuthContext
 import {
   Users,
   BarChart3,
@@ -19,31 +21,34 @@ import { cn } from "@/lib/utils";
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { user, logout, loading } = useAuth(); // ✅ user from context
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get admin user from localStorage
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const accessToken = localStorage.getItem("accessToken");
-
-  // Check if user is admin
-  const isAdmin = !!(accessToken && user.email && user.role === "ADMIN");
-
-  // Redirect if not authenticated or not admin
-  React.useEffect(() => {
-    if (!accessToken || !user.email) {
-      navigate("/login");
-    } else if (user.role !== "ADMIN") {
-      navigate("/dashboard");
+  // Redirect logic
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        navigate("/login");
+      } else if (user.role !== "ADMIN") {
+        navigate("/dashboard");
+      }
     }
-  }, [accessToken, user.email, user.role, navigate]);
+  }, [user, loading, navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    navigate("/login");
-  };
+  // Loading state (optional spinner)
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  // Block non-admin users
+  if (!user || user.role !== "ADMIN") {
+    return null;
+  }
 
   const sidebarItems = [
     { icon: Home, label: "Dashboard", path: "/admin" },
@@ -59,9 +64,9 @@ const AdminLayout = () => {
     return location.pathname.startsWith(path);
   };
 
-  if (!isAdmin) {
-    return null; // Loading or redirecting
-  }
+  const handleLogout = async () => {
+    await logout(); // ✅ uses AuthContext logout
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
