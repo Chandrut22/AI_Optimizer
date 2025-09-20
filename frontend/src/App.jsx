@@ -18,6 +18,7 @@ import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
 import Analytics from './pages/admin/Analytics.jsx';
 import Settings from './pages/admin/Settings.jsx';
+import SeoResultsPage from './pages/SeoResultsPage.jsx';
 
 const queryClient = new QueryClient();
 
@@ -37,7 +38,7 @@ const App = () => {
                             <Route path='/reset-password' element={<ResetPasswordPage />}/>
                             <Route path="/oauth-success" element={<OAuthSuccess />} />
                             <Route path="/dashboard" element={ <ProtectedRoute> <PanelPage /> </ProtectedRoute>}/>
-
+                            <Route path='/seo-results/:url' element={<SeoResultsPage />} />
                             <Route
                                 path="/admin"
                                 element={
