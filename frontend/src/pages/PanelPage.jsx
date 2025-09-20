@@ -64,16 +64,10 @@ const PanelPage = () => {
     // Redirect handled by ProtectedRoute
   };
 
-  const handleSEOAnalysis = async () => {
+  const handleSEOAnalysis = () => {
     if (!url) return;
-
-    setIsAnalyzing(true);
-
-    // TODO: Replace this with actual SEO API call
-    setTimeout(() => {
-      setIsAnalyzing(false);
-      alert("SEO analysis complete! (Demo)");
-    }, 1500);
+    const encoded = encodeURIComponent(url.trim());
+    navigate(`/seo-results/${encoded}`);
   };
 
   return (
