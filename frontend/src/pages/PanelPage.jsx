@@ -1,3 +1,4 @@
+// src/pages/PanelPage.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
+import { analyzeSEO } from "@/api/seoService"; // ✅ import your SEO API
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -48,15 +50,17 @@ const PanelPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  // Prevent render if no user (ProtectedRoute should normally handle this)
+  // Don’t render until user exists (ProtectedRoute usually prevents this)
   if (!user) return null;
 
   const { role = "USER", email, name } = user;
   const roleLower = role.toLowerCase();
 
-  // SEO Analysis State
+  // SEO State
   const [url, setUrl] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [seoResult, setSeoResult] = useState(null);
+  const [seoError, setSeoError] = useState("");
 
   // Handlers
   const handleLogout = async () => {
@@ -64,10 +68,20 @@ const PanelPage = () => {
     // Redirect handled by ProtectedRoute
   };
 
-  const handleSEOAnalysis = () => {
+  const handleSEOAnalysis = async () => {
     if (!url) return;
-    const encoded = encodeURIComponent(url.trim());
-    navigate(`/seo-results/${encoded}`);
+    setIsAnalyzing(true);
+    setSeoResult(null);
+    setSeoError("");
+
+    try {
+      const result = await analyzeSEO(url); // ✅ call backend
+      setSeoResult(result);
+    } catch (error) {
+      setSeoError(error.message || "Failed to analyze SEO");
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   return (
@@ -79,7 +93,6 @@ const PanelPage = () => {
           {/* Welcome Section */}
           <section className="bg-white dark:bg-[#1E293B] rounded-xl shadow-lg p-8">
             <div className="flex items-center justify-between">
-              {/* Left Content */}
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-3xl font-bold text-[#111827] dark:text-[#F8FAFC]">
@@ -99,7 +112,6 @@ const PanelPage = () => {
                 </p>
               </div>
 
-              {/* Right Content */}
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <p className="text-sm text-[#6B7280] dark:text-[#94A3B8]">Logged in as</p>
@@ -162,6 +174,24 @@ const PanelPage = () => {
                   </Button>
                 </div>
               </div>
+
+              {/* SEO Result */}
+              {seoResult && (
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2">
+                    SEO Analysis Result
+                  </h4>
+                  <pre className="whitespace-pre-wrap text-sm text-green-700 dark:text-green-200">
+                    {JSON.stringify(seoResult, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {seoError && (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                  <p className="text-red-700 dark:text-red-300">{seoError}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -210,46 +240,6 @@ const PanelPage = () => {
               </div>
             </section>
           )}
-
-          {/* Info Notice */}
-          <section
-            className={`p-6 rounded-lg border ${
-              role === "ADMIN"
-                ? "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800"
-                : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <User
-                className={`h-5 w-5 ${
-                  role === "ADMIN"
-                    ? "text-purple-600 dark:text-purple-400"
-                    : "text-blue-600 dark:text-blue-400"
-                }`}
-              />
-              <div>
-                <h4
-                  className={`font-medium ${
-                    role === "ADMIN"
-                      ? "text-purple-900 dark:text-purple-300"
-                      : "text-blue-900 dark:text-blue-300"
-                  }`}
-                >
-                  {role === "ADMIN" ? "👑 Admin Account Active" : "👤 Demo User Account"}
-                </h4>
-                <p
-                  className={`text-sm mt-1 ${
-                    role === "ADMIN"
-                      ? "text-purple-700 dark:text-purple-400"
-                      : "text-blue-700 dark:text-blue-400"
-                  }`}
-                >
-                  You're logged in as <strong>{email}</strong> with{" "}
-                  <strong>{roleLower}</strong> privileges.
-                </p>
-              </div>
-            </div>
-          </section>
         </div>
       </main>
 
