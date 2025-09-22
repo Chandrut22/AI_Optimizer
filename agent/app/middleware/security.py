@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -8,33 +9,40 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
-def _parse_cors_origins(origins_raw: str) -> list[str]:
+def _parse_cors_origins(origins_raw: Any) -> list[str]:
     """
-    Parse CORS origins from environment.
-    Supports:
-    - JSON array: '["https://a.com","https://b.com"]'
-    - Comma-separated: 'https://a.com,https://b.com'
+    Normalize CORS origins from env / settings.
+    Handles:
+    - Python list (already parsed by Pydantic)
+    - JSON string (e.g., '["https://a.com","https://b.com"]')
+    - Comma-separated string (e.g., 'https://a.com,https://b.com')
     """
     if not origins_raw:
         return []
 
-    try:
-        # Try JSON array
-        parsed = json.loads(origins_raw)
-        if isinstance(parsed, list):
-            return [o.strip() for o in parsed if isinstance(o, str)]
-    except json.JSONDecodeError:
-        pass
+    # If already list
+    if isinstance(origins_raw, list):
+        return [str(o).strip() for o in origins_raw if o]
 
-    # Fallback: comma-separated string
-    return [o.strip() for o in origins_raw.split(",") if o.strip()]
+    # If string
+    if isinstance(origins_raw, str):
+        try:
+            parsed = json.loads(origins_raw)
+            if isinstance(parsed, list):
+                return [str(o).strip() for o in parsed if o]
+        except json.JSONDecodeError:
+            # Fallback: comma-separated
+            return [o.strip() for o in origins_raw.split(",") if o.strip()]
+
+    # Fallback: just cast to str
+    return [str(origins_raw).strip()]
 
 
 def setup_middlewares(app: FastAPI) -> None:
     """
     Configure global FastAPI middlewares:
-    - CORS: allow cross-origin requests for browsers with cookies
-    - HTTPS redirect: enforce HTTPS if enabled
+    - CORS
+    - HTTPS redirect
     """
     allow_origins = _parse_cors_origins(settings.CORS_ALLOW_ORIGINS)
 
@@ -46,7 +54,7 @@ def setup_middlewares(app: FastAPI) -> None:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allow_origins,
-        allow_credentials=True,  # Required for cookies
+        allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "*"],
         expose_headers=["set-cookie"],
