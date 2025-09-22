@@ -51,9 +51,14 @@ def setup_middlewares(app: FastAPI) -> None:
     else:
         logger.info(f"✅ CORS allowed origins: {allow_origins}")
 
+    CORS_ALLOW_ORIGINS = [
+        "https://ai-optimizer.onrender.com",
+        "http://localhost:5173",
+        "https://ai-optimizer-beta.vercel.app",
+    ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=allow_origins,
+        allow_origins=CORS_ALLOW_ORIGINS,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "*"],
