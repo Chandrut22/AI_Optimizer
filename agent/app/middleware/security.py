@@ -62,7 +62,6 @@ def setup_middlewares(app: FastAPI) -> None:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "*"],
-        expose_headers=["set-cookie"],
     )
 
     if settings.FORCE_HTTPS_REDIRECT:
