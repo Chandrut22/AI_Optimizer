@@ -20,21 +20,17 @@ def _parse_cors_origins(origins_raw: Any) -> list[str]:
     if not origins_raw:
         return []
 
-    # If already list
     if isinstance(origins_raw, list):
         return [str(o).strip() for o in origins_raw if o]
 
-    # If string
     if isinstance(origins_raw, str):
         try:
             parsed = json.loads(origins_raw)
             if isinstance(parsed, list):
                 return [str(o).strip() for o in parsed if o]
         except json.JSONDecodeError:
-            # Fallback: comma-separated
             return [o.strip() for o in origins_raw.split(",") if o.strip()]
 
-    # Fallback: just cast to str
     return [str(origins_raw).strip()]
 
 
@@ -51,17 +47,12 @@ def setup_middlewares(app: FastAPI) -> None:
     else:
         logger.info(f"✅ CORS allowed origins: {allow_origins}")
 
-    CORS_ALLOW_ORIGINS = [
-        "https://ai-optimizer.onrender.com",
-        "http://localhost:5173",
-        "https://ai-optimizer-beta.vercel.app",
-    ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=CORS_ALLOW_ORIGINS,
+        allow_origins=allow_origins,   # ✅ FIXED (use parsed list)
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "*"],
+        allow_methods=["*"],          # shorthand for all methods
+        allow_headers=["*"],          # shorthand for all headers
     )
 
     if settings.FORCE_HTTPS_REDIRECT:
