@@ -4,7 +4,17 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
-from app.core.config import settings
+# Make sure this import points to your actual settings configuration
+# from app.core.config import settings
+
+# This is a placeholder for your settings object for testing purposes.
+# In your actual app, you would use the commented-out import above.
+class Settings:
+    CORS_ALLOW_ORIGINS: str | list[str] = ""
+    FORCE_HTTPS_REDIRECT: bool = False
+
+settings = Settings()
+
 
 logger = logging.getLogger(__name__)
 
@@ -14,24 +24,34 @@ def _parse_cors_origins(origins_raw: Any) -> list[str]:
     Normalize CORS origins from env / settings.
     Handles:
     - Python list (already parsed by Pydantic)
-    - JSON string (e.g., '["https://a.com","https://b.com"]')
-    - Comma-separated string (e.g., 'https://a.com,https://b.com')
+    - JSON string (e.g., '["https://a.com/","https://b.com"]')
+    - Comma-separated string (e.g., 'https://a.com/, https://b.com')
+    Strips whitespace and trailing slashes from each origin.
     """
     if not origins_raw:
         return []
 
+    # Helper function to clean a single origin URL
+    def clean_origin(origin: Any) -> str:
+        # 1. Convert to string, 2. Strip whitespace, 3. Strip trailing slashes
+        return str(origin).strip().rstrip("/")
+
     if isinstance(origins_raw, list):
-        return [str(o).strip() for o in origins_raw if o]
+        return [clean_origin(o) for o in origins_raw if o]
 
     if isinstance(origins_raw, str):
         try:
+            # Handle JSON-formatted string (e.g., '["url1", "url2/"]')
             parsed = json.loads(origins_raw)
             if isinstance(parsed, list):
-                return [str(o).strip() for o in parsed if o]
+                return [clean_origin(o) for o in parsed if o]
         except json.JSONDecodeError:
-            return [o.strip() for o in origins_raw.split(",") if o.strip()]
+            # Handle comma-separated string (e.g., 'url1/, url2')
+            return [clean_origin(o) for o in origins_raw.split(",") if o.strip()]
 
-    return [str(origins_raw).strip()]
+    # Fallback for any other single-item type
+    cleaned_origin = clean_origin(origins_raw)
+    return [cleaned_origin] if cleaned_origin else []
 
 
 def setup_middlewares(app: FastAPI) -> None:
@@ -49,10 +69,10 @@ def setup_middlewares(app: FastAPI) -> None:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=allow_origins,   # ✅ FIXED (use parsed list)
+        allow_origins=allow_origins,
         allow_credentials=True,
-        allow_methods=["*"],          # shorthand for all methods
-        allow_headers=["*"],          # shorthand for all headers
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     if settings.FORCE_HTTPS_REDIRECT:
