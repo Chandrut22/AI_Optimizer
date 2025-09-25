@@ -507,4 +507,29 @@ public class AuthController {
 
         return ResponseEntity.ok(Map.of("message", "Reset code resent to your email"));
     }
+
+    @GetMapping("/access-token")
+    public ResponseEntity<?> getAccessToken(HttpServletRequest request) {
+        logger.info("Request received for /access-token");
+
+        String accessToken = jwtUtil.extractTokenFromCookie(request, "access_token");
+        if (accessToken == null) {
+            logger.warn("No access token found in cookies");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No access token found"));
+        }
+
+        try {
+            // Optional: validate token before returning
+            String username = jwtUtil.extractUsername(accessToken);
+            logger.debug("Valid access token for user: {}", username);
+
+            return ResponseEntity.ok(Map.of("access_token", accessToken));
+        } catch (Exception e) {
+            logger.error("Invalid or expired access token", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid or expired token"));
+        }
+    }
+
 }
