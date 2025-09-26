@@ -1,11 +1,10 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-
-from app.core.logging import configure_logging
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from app.core.logger import configure_logging
 from app.middleware.security import setup_middlewares
 from app.middleware.request_logger import RequestLoggingMiddleware
 from app.routers import ai, health, debug
-
 import logging
 
 
@@ -18,16 +17,12 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    """
-    Factory function to create and configure the FastAPI application.
-    """
+    """Factory function for creating FastAPI application."""
     configure_logging()
-    logger = logging.getLogger("app.main")
-
     app = FastAPI(
         title="AI Agent API",
         version="1.0.0",
-        description="Backend service for AI agent with health checks, AI tasks, and authentication.",
+        description="FastAPI service secured with Spring Boot JWT tokens",
         lifespan=lifespan,
     )
 
@@ -39,6 +34,15 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/health", tags=["Health"])
     app.include_router(ai.router, prefix="/ai", tags=["AI"])
     app.include_router(debug.router, prefix="/debug", tags=["Debug"])
+
+    # Exception Handlers
+    @app.exception_handler(Exception)
+    async def generic_exception_handler(request: Request, exc: Exception):
+        logging.error(f"Unhandled exception: {exc}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"},
+        )
 
     return app
 

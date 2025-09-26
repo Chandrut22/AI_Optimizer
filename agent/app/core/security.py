@@ -1,28 +1,25 @@
-from typing import Dict, Any
 import jwt
 import hashlib
-from jwt import InvalidTokenError, ExpiredSignatureError
-from .config import settings
+from fastapi import HTTPException, status
+from jwt import PyJWTError
+from app.auth.models import UserClaims
+from app.core.config import settings
+
+# Hash secret with SHA-256 (same as Spring Boot JwtUtil)
+SECRET_KEY = hashlib.sha256(settings.JWT_SECRET.encode("utf-8")).digest()
+ALGORITHM = settings.JWT_ALGORITHM
 
 
-def _spring_hmac_key() -> bytes:
+def verify_access_token(token: str) -> UserClaims:
     """
-    Replicate Spring Boot's HMAC key derivation:
-    SHA-256 digest of the raw JWT_SECRET.
+    Validate JWT access token issued by Spring Boot.
     """
-    return hashlib.sha256(settings.JWT_SECRET.encode("utf-8")).digest()
-
-
-def verify_jwt(token: str) -> Dict[str, Any]:
-    """
-    Verify a JWT issued by Spring Boot.
-    Raises ExpiredSignatureError if expired.
-    Raises InvalidTokenError for other issues.
-    """
-    return jwt.decode(
-        token,
-        _spring_hmac_key(),                # << use derived key
-        algorithms=[settings.JWT_ALGORITHM],
-        options={"require": ["exp"]},
-    )
-    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return UserClaims(**payload)
+    except PyJWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid or expired access token: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from e
