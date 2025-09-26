@@ -1,73 +1,14 @@
-import json
-import logging
-from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
 
-
-def _parse_cors_origins(origins_raw: Any) -> list[str]:
-    """
-    Normalize CORS origins from env / settings.
-
-    Handles:
-    - Python list (already parsed by Pydantic)
-    - JSON string (e.g., '["https://a.com/","https://b.com"]')
-    - Comma-separated string (e.g., 'https://a.com/, https://b.com')
-
-    Cleans up:
-    - Strips whitespace
-    - Removes trailing slashes (since CORS matches exact origin strings)
-    """
-
-    def clean_origin(origin: Any) -> str:
-        return str(origin).strip().rstrip("/")
-
-    if not origins_raw:
-        return []
-
-    if isinstance(origins_raw, list):
-        return [clean_origin(o) for o in origins_raw if o]
-
-    if isinstance(origins_raw, str):
-        try:
-            parsed = json.loads(origins_raw)
-            if isinstance(parsed, list):
-                return [clean_origin(o) for o in parsed if o]
-        except json.JSONDecodeError:
-            return [clean_origin(o) for o in origins_raw.split(",") if o.strip()]
-
-        return [clean_origin(origins_raw)]
-
-    return [clean_origin(origins_raw)]
-
-
-def setup_middlewares(app: FastAPI) -> None:
-    """
-    Configure global FastAPI middlewares:
-    - CORS
-    - HTTPS redirect
-    """
-    allow_origins = [o.rstrip("/") for o in _parse_cors_origins(settings.CORS_ALLOW_ORIGINS)]
-
-    if not allow_origins:
-        logger.warning("⚠️ No CORS origins configured; frontend may not work properly.")
-    else:
-        logger.info(f"✅ CORS allowed origins: {allow_origins}")
-
+def setup_middlewares(app: FastAPI):
+    """Configure global middlewares such as CORS."""
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=allow_origins,
+        allow_origins=settings.CORS_ALLOWED_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    if getattr(settings, "FORCE_HTTPS_REDIRECT", False):
-        logger.info("🔒 Enforcing HTTPS redirect for all requests")
-        app.add_middleware(HTTPSRedirectMiddleware)
-    else:
-        logger.warning("⚠️ HTTPS redirect is disabled; do not use this in production!")
