@@ -1,15 +1,18 @@
+# app/auth/models.py
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
 
 class UserClaims(BaseModel):
-    """JWT claims extracted from Spring Boot-issued token."""
-
-    sub: str = Field(..., description="User ID or email")
+    """
+    Represents JWT claims we expect in activation_token.
+    `sub` is the user id. `scopes` is a list of permission strings.
+    """
+    sub: str = Field(..., description="Subject / user id")
     exp: int = Field(..., description="Expiration timestamp (epoch seconds)")
     iat: Optional[int] = Field(None, description="Issued at timestamp")
     email: Optional[str] = Field(None, description="User email")
-    roles: List[str] = Field(default_factory=list, description="User roles")
-
+    scopes: List[str] = Field(default_factory=list, description="Scopes granted")
+    # allow extra claims but ignore them
     class Config:
-        extra = "ignore"  # ignore unexpected fields
+        extra = "ignore"

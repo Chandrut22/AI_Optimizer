@@ -1,63 +1,29 @@
-"""
-Logging configuration for the FastAPI AI Agent service.
-Console = human readable, File = JSON (daily filename).
-"""
-
+# app/core/logger.py
 import logging
 import sys
-import os
-from datetime import datetime
-from pythonjsonlogger import jsonlogger
+from logging.handlers import RotatingFileHandler
 from app.core.config import settings
 
 
-def configure_logging() -> None:
-    """
-    Configure logging with:
-      - Console handler (human readable)
-      - File handler (JSON structured, per-day filename)
-    """
+def configure_logging():
+    level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 
-    # --- Reset existing loggers to avoid duplication ---
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
+    root = logging.getLogger()
+    root.setLevel(level)
 
-    # --- Set log level ---
-    level: int = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+    # Console handler
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(level)
+    ch.setFormatter(formatter)
+    root.addHandler(ch)
 
-    handlers: list[logging.Handler] = []
+    # File handler (rotating)
+    fh = RotatingFileHandler(settings.LOG_FILE, maxBytes=10_000_000, backupCount=5, encoding="utf-8")
+    fh.setLevel(level)
+    fh.setFormatter(formatter)
+    root.addHandler(fh)
 
-    # ---- Console Handler (plain format, NO JSON) ----
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_formatter = logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-    )
-    console_handler.setFormatter(console_formatter)
-    handlers.append(console_handler)
 
-    # ---- File Handler (JSON format, named by date) ----
-    log_dir = "logs"
-    os.makedirs(log_dir, exist_ok=True)
-    today = datetime.now().strftime("%Y-%m-%d")
-    log_file = os.path.join(log_dir, f"ai-agent-{today}.log")
-
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
-    json_formatter = jsonlogger.JsonFormatter(
-        "%(asctime)s %(levelname)s %(name)s %(message)s %(pathname)s %(lineno)d"
-    )
-    file_handler.setFormatter(json_formatter)
-    handlers.append(file_handler)
-
-    # --- Apply configuration ---
-    logging.basicConfig(level=level, handlers=handlers)
-
-    # --- Reduce noisy loggers ---
-    logging.getLogger("uvicorn.error").setLevel(level)
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("asyncio").setLevel(logging.WARNING)
-    logging.getLogger("watchfiles").setLevel(logging.WARNING)
-
-    logging.getLogger("app.core.logging").info(
-        f"Logging initialized with level={settings.LOG_LEVEL}, console=plain, file={log_file}"
-    )
+def get_logger(name: str):
+    return logging.getLogger(name)
