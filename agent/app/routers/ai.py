@@ -16,12 +16,21 @@ router = APIRouter(
 # --- Request & Response Models --- #
 
 class AskRequest(BaseModel):
-    question: str = Field(..., min_length=3, description="The question to ask the AI")
+    """Request payload for asking the AI a question."""
+
+    question: str = Field(
+        ...,
+        min_length=3,
+        max_length=500,
+        description="The question to ask the AI",
+    )
 
 
 class AskResponse(BaseModel):
-    user: dict
-    answer: str
+    """Response containing the AI answer and user context."""
+
+    user: UserClaims
+    answer: str = Field(..., description="AI-generated answer")
 
 
 # --- Routes --- #
@@ -36,22 +45,27 @@ class AskResponse(BaseModel):
 async def ai_ask(
     body: AskRequest,
     user: UserClaims = Depends(get_current_user),
-):
+) -> AskResponse:
     """
     Secure AI question-answering endpoint.
 
     Steps:
-    1. Authenticated user is resolved from cookies/JWT via Spring Boot.
+    1. Authenticated user is resolved from JWT (via Spring Boot).
     2. Accepts a natural language question.
-    3. Returns AI-generated answer placeholder (replace with real model call).
+    3. Returns a placeholder AI-generated answer (replace with real AI service).
     """
 
-    logger.info("User '%s' asked AI: %s", user.sub, body.question)
-
-    # TODO: Replace with real AI service integration
-    ai_answer = f"🤖 You asked: '{body.question}'. Here's an AI-generated response placeholder."
-
-    return AskResponse(
-        user={"id": user.sub, "email": user.email, "roles": user.roles},
-        answer=ai_answer,
+    logger.info(
+        "User '%s' (roles=%s) asked AI: %s",
+        user.sub,
+        user.roles,
+        body.question,
     )
+
+    # TODO: Replace with actual AI service integration
+    ai_answer = (
+        f"🤖 You asked: '{body.question}'. "
+        f"Here's an AI-generated response placeholder."
+    )
+
+    return AskResponse(user=user, answer=ai_answer)
