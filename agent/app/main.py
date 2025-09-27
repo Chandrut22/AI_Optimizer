@@ -1,48 +1,48 @@
+# app/main.py
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from app.core.logger import configure_logging
+from app.core.logger import configure_logging, get_logger
 from app.middleware.security import setup_middlewares
 from app.middleware.request_logger import RequestLoggingMiddleware
-from app.routers import ai, health, debug
-import logging
+from app.routers import service, health, debug
+from app.core.config import settings
+
+configure_logging()
+logger = get_logger("app.main")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger = logging.getLogger("app.main")
-    logger.info("🚀 Starting FastAPI AI Agent service...")
+    logger.info("🚀 Starting FastAPI service...")
     yield
-    logger.info("🛑 Shutting down FastAPI AI Agent service...")
+    logger.info("🛑 Shutting down FastAPI service...")
 
 
 def create_app() -> FastAPI:
-    """Factory function for creating FastAPI application."""
-    configure_logging()
     app = FastAPI(
-        title="AI Agent API",
+        title="FastAPI Activation Service",
         version="1.0.0",
-        description="FastAPI service secured with Spring Boot JWT tokens",
+        description="Validates Spring Boot activation_token JWTs and exposes /api/service",
         lifespan=lifespan,
     )
 
-    # Middlewares
+    # Middlewares & logging
     setup_middlewares(app)
     app.add_middleware(RequestLoggingMiddleware)
 
     # Routers
     app.include_router(health.router, prefix="/health", tags=["Health"])
-    app.include_router(ai.router, prefix="/ai", tags=["AI"])
-    app.include_router(debug.router, prefix="/debug", tags=["Debug"])
+    app.include_router(service.router, prefix="/api", tags=["API"])
+    # debug routes should be mounted only if debug enabled (see below)
+    if settings.DEBUG:
+        app.include_router(debug.router, prefix="/debug", tags=["Debug"])
 
-    # Exception Handlers
+    # Generic exception handler (logs and returns minimal info)
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
-        logging.error(f"Unhandled exception: {exc}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={"detail": "Internal server error"},
-        )
+        logger.error("Unhandled exception: %s", exc, exc_info=True)
+        return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
     return app
 
