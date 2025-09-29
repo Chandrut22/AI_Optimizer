@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from app.core.logger import configure_logging, get_logger
 from app.middleware.security import setup_middlewares
 from app.middleware.request_logger import RequestLoggingMiddleware
-from app.routers import service, health, debug
+from app.routers import service, health, debug, ai
 from app.core.config import settings
 
 configure_logging()
@@ -34,6 +34,7 @@ def create_app() -> FastAPI:
     # Routers
     app.include_router(health.router, prefix="/health", tags=["Health"])
     app.include_router(service.router, prefix="/api", tags=["API"])
+    app.include_router(ai.router, prefix="/api", tags=["Agent"])
     # debug routes should be mounted only if debug enabled (see below)
     if settings.DEBUG:
         app.include_router(debug.router, prefix="/debug", tags=["Debug"])
