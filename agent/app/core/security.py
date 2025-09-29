@@ -5,24 +5,35 @@ from jwt import PyJWTError
 from fastapi import HTTPException, status
 from app.core.config import settings
 from app.auth.models import UserClaims
+import hashlib
 
-# Helper: determine key to use
-def _get_verification_key() -> str:
+
+def _get_verification_key() -> bytes:
+    """
+    Derive the signing/verification key depending on algorithm.
+    For HS256: hash the raw secret with SHA-256 (to match Spring Boot JwtUtil).
+    """
     alg = settings.ACTIVATION_ALGORITHM.upper()
-    if alg.startswith("HS"):
+
+    if alg == "HS256":
         if not settings.ACTIVATION_SECRET:
             raise RuntimeError("ACTIVATION_SECRET is required for HMAC algorithms")
-        return settings.ACTIVATION_SECRET
+        # Hash secret to match Spring Boot logic
+        return hashlib.sha256(settings.ACTIVATION_SECRET.encode("utf-8")).digest()
+
+    elif alg.startswith("HS"):
+        # Other HMAC (HS384, HS512) → use secret directly
+        if not settings.ACTIVATION_SECRET:
+            raise RuntimeError("ACTIVATION_SECRET is required for HMAC algorithms")
+        return settings.ACTIVATION_SECRET.encode("utf-8")
+
     elif alg.startswith("RS") or alg.startswith("ES"):
-        # For RSA/ECDSA, expect public key (PEM) in ACTIVATION_PUBLIC_KEY
         if not settings.ACTIVATION_PUBLIC_KEY:
             raise RuntimeError("ACTIVATION_PUBLIC_KEY is required for RSA/ECDSA algorithms")
         return settings.ACTIVATION_PUBLIC_KEY
+
     else:
-        # fallback to secret
-        if settings.ACTIVATION_SECRET:
-            return settings.ACTIVATION_SECRET
-        raise RuntimeError("No ACTIVATION secret/public key configured")
+        raise RuntimeError(f"Unsupported JWT algorithm: {alg}")
 
 
 def validate_activation_token(token: str) -> UserClaims:
@@ -37,14 +48,12 @@ def validate_activation_token(token: str) -> UserClaims:
     try:
         payload: Dict[str, Any] = jwt.decode(token, key=key, algorithms=algorithms)
     except PyJWTError as exc:
-        # Map JWT errors to 401
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired activation token",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
 
-    # Use pydantic model to validate expected claims
     try:
         claims = UserClaims(**payload)
     except Exception as exc:
