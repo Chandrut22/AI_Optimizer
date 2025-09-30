@@ -119,7 +119,7 @@ export const logoutUser = async () => {
 export const getAccessToken = async () => {
   try {
     const response = await API.get("/auth/access-token");
-    return response.data.accessToken; // assuming { accessToken: "..." }
+    return response.data.access_token; // assuming { accessToken: "..." }
   } catch (error) {
     throw error.response?.data || { message: "Failed to fetch access token" };
   }
