@@ -11,6 +11,7 @@ const SEO_API = axios.create({
 SEO_API.interceptors.request.use(
   async (config) => {
     const token = await getAccessToken(); // always get fresh token
+    console.log("Injecting token:", token);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
