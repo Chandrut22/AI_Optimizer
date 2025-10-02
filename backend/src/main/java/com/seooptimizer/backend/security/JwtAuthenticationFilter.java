@@ -1,8 +1,11 @@
 package com.seooptimizer.backend.security;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -20,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final CustomerUserDetailsService userDetailsService;
+    private final CustomerUserDetailsService userDetailsService; // This can be removed if not used elsewhere
 
     @Override
     protected void doFilterInternal(
@@ -43,14 +46,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String jwtToken = authHeader.substring(7);
         String email = jwtUtil.extractUsername(jwtToken);
 
-        if (email == null) {
-            System.out.println("[JwtFilter] Token does not contain a valid username.");
-            filterChain.doFilter(request, response);
-            return;
-        }
+        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            List<String> roles = jwtUtil.extractRoles(jwtToken);
+            List<SimpleGrantedAuthority> authorities = roles.stream()
+                    .map(SimpleGrantedAuthority::new)
+                    .collect(Collectors.toList());
 
-        if (SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+            UserDetails userDetails = new org.springframework.security.core.userdetails.User(email, "", authorities);
 
             if (jwtUtil.validateToken(jwtToken, userDetails)) {
                 UsernamePasswordAuthenticationToken authentication =

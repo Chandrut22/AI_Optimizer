@@ -2,10 +2,12 @@ package com.seooptimizer.backend.security;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Collections;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -52,26 +54,27 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             return userRepository.save(newUser);
         });
 
-        // ✅ Generate JWT tokens
-        String accessToken = jwtUtil.generateAccessToken(user.getEmail());
+        // ✅ Generate JWT tokens with roles
+        var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+        String accessToken = jwtUtil.generateAccessToken(user.getEmail(), authorities);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getEmail());
 
         // ✅ Create HttpOnly cookies using ResponseCookie
         ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", accessToken)
-            .httpOnly(true)
-            .secure(true) // ❗ Use true in production (requires HTTPS)
-            .sameSite("None") // ❗ Required for cross-site cookies
-            .path("/")
-            .maxAge(Duration.ofMinutes(15))
-            .build();
+                .httpOnly(true)
+                .secure(true) // ❗ Use true in production (requires HTTPS)
+                .sameSite("None") // ❗ Required for cross-site cookies
+                .path("/")
+                .maxAge(Duration.ofMinutes(15))
+                .build();
 
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", refreshToken.getToken())
-            .httpOnly(true)
-            .secure(true)
-            .sameSite("None")
-            .path("/")
-            .maxAge(Duration.ofDays(7))
-            .build();
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .path("/")
+                .maxAge(Duration.ofDays(7))
+                .build();
 
         // ✅ Add cookies to response header
         response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());

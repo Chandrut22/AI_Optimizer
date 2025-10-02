@@ -4,9 +4,15 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -41,10 +47,14 @@ public class JwtUtil {
     }
 
     /**
-     * Generates a signed JWT access token for the given username.
+     * Generates a signed JWT access token for the given username and authorities.
      */
-    public String generateAccessToken(String username) {
+    public String generateAccessToken(String username, Collection<? extends GrantedAuthority> authorities) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", authorities.stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()));
+
         return Jwts.builder()
+                .setClaims(claims)
                 .setSubject(username)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiryMs))
@@ -57,6 +67,14 @@ public class JwtUtil {
      */
     public String extractUsername(String token) {
         return getClaims(token).getSubject();
+    }
+    
+    /**
+     * Extracts roles from a JWT token.
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> extractRoles(String token) {
+        return getClaims(token).get("roles", List.class);
     }
 
     /**
