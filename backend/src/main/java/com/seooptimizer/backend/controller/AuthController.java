@@ -3,6 +3,7 @@ package com.seooptimizer.backend.controller;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -203,16 +205,16 @@ public class AuthController {
         }
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
-        String accessToken = jwtUtil.generateAccessToken(userDetails.getUsername());
+        String accessToken = jwtUtil.generateAccessToken(userDetails.getUsername(), userDetails.getAuthorities());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getEmail());
 
         // ✅ Access token cookie (short-lived, 15 min)
         ResponseCookie accessCookie = ResponseCookie.from("access_token", accessToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/")                  // sent with all requests
-                .sameSite("None")           // required for cross-site
-                .maxAge(15 * 60)            // 15 minutes
+                .path("/")               // sent with all requests
+                .sameSite("None")        // required for cross-site
+                .maxAge(15 * 60)           // 15 minutes
                 .build();
 
         // ✅ Refresh token cookie (7 days, scoped only to refresh endpoint)
@@ -273,13 +275,14 @@ public class AuthController {
         refreshTokenService.deleteByToken(oldRefreshToken);
         String newRefreshToken = refreshTokenService.saveToken(email);
 
-        String newAccessToken = jwtUtil.generateAccessToken(email);
+        var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+        String newAccessToken = jwtUtil.generateAccessToken(email, authorities);
 
         // ✅ Access token cookie (15 min)
         ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", newAccessToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/")                   // access token should be sent everywhere
+                .path("/")               // access token should be sent everywhere
                 .maxAge(15 * 60)
                 .sameSite("None")
                 .build();
@@ -429,8 +432,8 @@ public class AuthController {
         ResponseCookie deleteAccessToken = ResponseCookie.from("access_token", "")
                 .httpOnly(true)
                 .secure(true)
-                .path("/")              // matches login path
-                .maxAge(0)              // expire immediately
+                .path("/")               // matches login path
+                .maxAge(0)               // expire immediately
                 .sameSite("None")
                 .build();
 
@@ -439,7 +442,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true)
                 .path("/api/auth/refresh-token") // matches refresh cookie path
-                .maxAge(0)              // expire immediately
+                .maxAge(0)               // expire immediately
                 .sameSite("None")
                 .build();
 
