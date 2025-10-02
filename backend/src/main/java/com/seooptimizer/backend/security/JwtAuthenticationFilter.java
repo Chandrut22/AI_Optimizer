@@ -10,6 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import jakarta.servlet.FilterChain;
@@ -23,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final CustomerUserDetailsService userDetailsService; // This can be removed if not used elsewhere
+    private final CustomerUserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(
@@ -32,24 +33,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String requestURI = request.getRequestURI();
+        String jwtToken = null;
         String authHeader = request.getHeader("Authorization");
 
-        System.out.println("[JwtFilter] Incoming request: " + requestURI);
+        // 1. Try to get JWT from Authorization header
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            jwtToken = authHeader.substring(7);
+        } 
+        // 2. If not in header, try to get it from the cookie
+        else {
+            jwtToken = jwtUtil.extractAccessTokenFromCookie(request);
+        }
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            System.out.println("[JwtFilter] No Authorization header or invalid format.");
+        if (jwtToken == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String jwtToken = authHeader.substring(7);
         String email = jwtUtil.extractUsername(jwtToken);
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            // Since roles are in the token, we can build UserDetails without a DB call
             List<String> roles = jwtUtil.extractRoles(jwtToken);
             List<SimpleGrantedAuthority> authorities = roles.stream()
-                    .map(SimpleGrantedAuthority::new)
+                    .map(role -> new SimpleGrantedAuthority(role)) // Roles should be prefixed (e.g., "ROLE_ADMIN")
                     .collect(Collectors.toList());
 
             UserDetails userDetails = new org.springframework.security.core.userdetails.User(email, "", authorities);
@@ -67,9 +74,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 );
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-                System.out.println("[JwtFilter] Authentication set for user: " + email);
-            } else {
-                System.out.println("[JwtFilter] Invalid or expired token for user: " + email);
             }
         }
 
