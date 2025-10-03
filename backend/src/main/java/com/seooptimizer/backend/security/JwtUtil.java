@@ -2,8 +2,6 @@ package com.seooptimizer.backend.security;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -37,13 +35,10 @@ public class JwtUtil {
 
     @PostConstruct
     public void init() {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashedKey = digest.digest(rawSecret.getBytes(StandardCharsets.UTF_8));
-            this.secretKey = Keys.hmacShaKeyFor(hashedKey);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 algorithm not available", e);
-        }
+        // The Keys.hmacShaKeyFor method handles creating a secure key.
+        // The raw secret from your properties file is used directly.
+        // Manual hashing is not needed and was causing the signature mismatch.
+        this.secretKey = Keys.hmacShaKeyFor(rawSecret.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
