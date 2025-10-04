@@ -5,29 +5,21 @@ from jwt import PyJWTError
 from fastapi import HTTPException, status
 from app.core.config import settings
 from app.auth.models import UserClaims
-import hashlib
 
 
 def _get_verification_key() -> bytes:
     """
     Derive the signing/verification key depending on algorithm.
-    For HS256: hash the raw secret with SHA-256 (to match Spring Boot JwtUtil).
+    For HS256: use the raw secret directly (to match Spring Boot JwtUtil).
     """
     alg = settings.ACTIVATION_ALGORITHM.upper()
 
-    if alg == "HS256":
-        if not settings.ACTIVATION_SECRET:
-            raise RuntimeError("ACTIVATION_SECRET is required for HMAC algorithms")
-        # Hash secret to match Spring Boot logic
-        return hashlib.sha256(settings.ACTIVATION_SECRET.encode("utf-8")).digest()
-
-    elif alg.startswith("HS"):
-        # Other HMAC (HS384, HS512) → use secret directly
+    if alg.startswith("HS"):  # HMAC (HS256/384/512)
         if not settings.ACTIVATION_SECRET:
             raise RuntimeError("ACTIVATION_SECRET is required for HMAC algorithms")
         return settings.ACTIVATION_SECRET.encode("utf-8")
 
-    elif alg.startswith("RS") or alg.startswith("ES"):
+    elif alg.startswith("RS") or alg.startswith("ES"):  # RSA/ECDSA
         if not settings.ACTIVATION_PUBLIC_KEY:
             raise RuntimeError("ACTIVATION_PUBLIC_KEY is required for RSA/ECDSA algorithms")
         return settings.ACTIVATION_PUBLIC_KEY
