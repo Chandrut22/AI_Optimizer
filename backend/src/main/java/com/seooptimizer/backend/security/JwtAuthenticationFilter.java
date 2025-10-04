@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -36,11 +36,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String jwtToken = null;
         String authHeader = request.getHeader("Authorization");
 
-        // 1. Try to get JWT from Authorization header
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
             jwtToken = authHeader.substring(7);
         } 
-        // 2. If not in header, try to get it from the cookie
         else {
             jwtToken = jwtUtil.extractAccessTokenFromCookie(request);
         }
@@ -50,33 +48,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String email = jwtUtil.extractUsername(jwtToken);
+        try {
+            String email = jwtUtil.extractUsername(jwtToken);
 
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            // Since roles are in the token, we can build UserDetails without a DB call
-            List<String> roles = jwtUtil.extractRoles(jwtToken);
-            List<SimpleGrantedAuthority> authorities = roles.stream()
-                    .map(role -> new SimpleGrantedAuthority(role)) // Roles should be prefixed (e.g., "ROLE_ADMIN")
-                    .collect(Collectors.toList());
+            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                List<String> roles = jwtUtil.extractRoles(jwtToken);
+                
+                // ✅ FIX: Add the "ROLE_" prefix to each role for Spring Security compatibility
+                List<SimpleGrantedAuthority> authorities = roles.stream()
+                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                        .collect(Collectors.toList());
 
-            UserDetails userDetails = new org.springframework.security.core.userdetails.User(email, "", authorities);
+                UserDetails userDetails = new org.springframework.security.core.userdetails.User(email, "", authorities);
 
-            if (jwtUtil.validateToken(jwtToken, userDetails)) {
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
+                if (jwtUtil.validateToken(jwtToken, userDetails)) {
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
 
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+                    authentication.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    );
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
+        } catch (Exception e) {
+            // Log the exception but allow the filter chain to continue
+            // This prevents the request from halting on an invalid token
+            logger.error("Cannot set user authentication: {}", e);
         }
 
         filterChain.doFilter(request, response);
     }
 }
+
