@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Create an Axios instance
-const API = axios.create({
+export const API = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true, // Important for sending HttpOnly cookies
 });
