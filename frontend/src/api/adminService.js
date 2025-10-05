@@ -23,7 +23,7 @@ export const promoteUser = async (userId) => {
 // Demote an admin to user
 export const demoteUser = async (userId) => {
   try {
-    const response = await API.put(`/admin/users/${userId}/demote`);
+    const response = await API.put(`/admin/depromote/${userId}`);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Failed to demote user" };
