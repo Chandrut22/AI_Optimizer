@@ -50,6 +50,15 @@ public class AdminController {
         }).orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    @PutMapping("/depromote/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public User depromoteToUser(@PathVariable Long userId) {
+        return userRepository.findById(userId).map(user -> {
+            user.setRole(com.seooptimizer.backend.enumtype.Role.USER);
+            return userRepository.save(user);
+        }).orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
     @DeleteMapping("/delete/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteUser(@PathVariable Long userId) {
