@@ -30,15 +30,6 @@ export const demoteUser = async (userId) => {
   }
 };
 
-// Ban or unban user
-export const toggleBanUser = async (userId) => {
-  try {
-    const response = await API.put(`/admin/users/${userId}/toggle-ban`);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: "Failed to update user status" };
-  }
-};
 
 // Delete user
 export const deleteUser = async (userId) => {
