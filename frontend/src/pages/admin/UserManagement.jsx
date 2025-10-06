@@ -29,7 +29,6 @@ import {
   fetchAllUsers,
   promoteUser,
   demoteUser,
-  toggleBanUser,
   deleteUser,
 } from "@/api/adminService";
 
@@ -106,16 +105,7 @@ const UserManagement = () => {
     );
   };
 
-  const handleBan = async (id) => {
-    await toggleBanUser(id);
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === id
-          ? { ...u, status: u.status === "banned" ? "active" : "banned" }
-          : u
-      )
-    );
-  };
+  
 
   const handleDelete = async (id) => {
     await deleteUser(id);
@@ -263,19 +253,6 @@ const UserManagement = () => {
                               <TooltipContent>Demote to User</TooltipContent>
                             </Tooltip>
                           )}
-
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleBan(user.id)}
-                              >
-                                <Ban className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Ban User</TooltipContent>
-                          </Tooltip>
 
                           <Tooltip>
                             <TooltipTrigger asChild>
