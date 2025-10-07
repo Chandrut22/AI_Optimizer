@@ -362,6 +362,7 @@ public class AuthController {
 
                 user.setEnabled(true);
                 user.setVerificationCode(null);
+                user.setCredits(100);
                 userRepository.save(user);
 
                 logger.info("Registration verification successful for email={}", email);
