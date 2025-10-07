@@ -1,6 +1,4 @@
-import { API } from "@/api/auth.js"; // ✅ Use correct import path for shared axios instance
-
-// Get all users
+import { API } from "@/api/auth.js"; 
 export const fetchAllUsers = async () => {
   try {
     const response = await API.get("/admin/users");
