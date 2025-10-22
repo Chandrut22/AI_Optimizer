@@ -6,4 +6,4 @@ scrape_configs:
     metrics_path: '/actuator/prometheus'
     static_configs:
       # 'app:8080' is the Docker service name and port for your backend
-      - targets: ['app:8080']
+      - targets: ['ai-optimizer-backend:8080']
