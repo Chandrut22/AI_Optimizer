@@ -23,19 +23,15 @@ public class SecurityConfiguration {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/hello").permitAll()
+                        // Explicitly permit ONLY these two patterns
+                        .requestMatchers("/hello", "/api/v1/auth/**").permitAll() 
+                        // Secure everything else
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // AuthenticationProvider will be picked up automatically by Spring Security
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // REMOVED userDetailsService() bean
-    // REMOVED passwordEncoder() bean
-    // REMOVED authenticationProvider() bean
-    // REMOVED authenticationManager() bean
 }
