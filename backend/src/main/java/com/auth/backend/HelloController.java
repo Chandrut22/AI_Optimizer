@@ -9,4 +9,9 @@ public class HelloController {
     public String hello() {
         return "Hello, World!";
     }
+
+    @GetMapping("/api/secure")
+    public String getSecureData() {
+        return "Hello, this is secured data!";
+    }
 }

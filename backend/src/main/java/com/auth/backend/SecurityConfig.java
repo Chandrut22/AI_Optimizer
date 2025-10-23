@@ -14,10 +14,15 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/hello").permitAll() // 1. Allow public access to /hello
-                .anyRequest().authenticated()          // 2. Secure all other endpoints
+                // Allow public access to the /hello endpoint
+                .requestMatchers("/hello").permitAll() 
+                
+                // All other endpoints (like /api/**) must be authenticated
+                .anyRequest().authenticated()          
             )
-            .oauth2ResourceServer(oauth2 -> oauth2.jwt()); // 3. Use JWT for authentication
+            // Configure the app as an OAuth2 Resource Server
+            // It will validate incoming JWTs
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt()); 
 
         return http.build();
     }
