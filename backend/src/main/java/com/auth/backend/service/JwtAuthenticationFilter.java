@@ -15,14 +15,17 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.util.Arrays;
+import jakarta.servlet.http.Cookie;
 import java.io.IOException;
 
 @Component
-@RequiredArgsConstructor // Lombok constructor for final fields
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService; // Spring Security interface to load user
+    private final UserDetailsService userDetailsService;
+    private final String ACCESS_TOKEN_COOKIE_NAME = "access_token"; // Cookie name constant
 
     @Override
     protected void doFilterInternal(
@@ -31,33 +34,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String userEmail;
+        // Try to extract token from Cookie first
+        String jwt = extractTokenFromCookie(request);
+        String userEmail = null;
 
-        // 1. Check if the Authorization header is present and starts with "Bearer "
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response); // Pass to the next filter
-            return;
+        // If token found in cookie, extract username
+        if (jwt != null) {
+            try {
+                userEmail = jwtService.extractUsername(jwt);
+            } catch (Exception e) {
+                // Handle potential exceptions during extraction (e.g., expired token)
+                logger.warn("Could not extract username from JWT cookie: " + e.getMessage());
+                // Optionally clear the invalid cookie here
+            }
         }
 
-        // 2. Extract the JWT token (remove "Bearer ")
-        jwt = authHeader.substring(7);
-
-        // 3. Extract the user email (subject) from the token
-        userEmail = jwtService.extractUsername(jwt);
-
-        // 4. Check if email is not null AND user is not already authenticated
+        // --- Original logic using the extracted email and jwt ---
+        // Check if email is not null AND user is not already authenticated
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             // Load UserDetails from the database
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-            // 5. Validate the token
-            if (jwtService.isTokenValid(jwt, userDetails)) {
+            // Validate the token (check expiration, etc.)
+            boolean isTokenValid = false;
+            try {
+                 isTokenValid = jwtService.isTokenValid(jwt, userDetails);
+            } catch(Exception e) {
+                 logger.warn("JWT token validation failed: " + e.getMessage());
+                 // Optionally clear the invalid cookie here
+            }
+
+            if (isTokenValid) {
                 // Create an authentication token
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
-                        null, // Credentials are null for JWT
+                        null,
                         userDetails.getAuthorities()
                 );
                 authToken.setDetails(
@@ -69,5 +80,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         // Pass the request to the next filter in the chain
         filterChain.doFilter(request, response);
+    }
+
+    // Helper method to extract token from cookies
+    private String extractTokenFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            return Arrays.stream(cookies)
+                    .filter(cookie -> ACCESS_TOKEN_COOKIE_NAME.equals(cookie.getName()))
+                    .map(Cookie::getValue)
+                    .findFirst()
+                    .orElse(null);
+        }
+        return null;
     }
 }

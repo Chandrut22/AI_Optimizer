@@ -8,5 +8,30 @@
     "name": "application.security.jwt.expiration",
     "type": "java.lang.String",
     "description": "A description for 'application.security.jwt.expiration'"
+  },
+  {
+    "name": "application.cors.allowed-origins",
+    "type": "java.lang.String",
+    "description": "A description for 'application.cors.allowed-origins'"
+  },
+  {
+    "name": "application.security.jwt.refresh-token.expiration",
+    "type": "java.lang.String",
+    "description": "A description for 'application.security.jwt.refresh-token.expiration'"
+  },
+  {
+    "name": "application.security.jwt.secret-key",
+    "type": "java.lang.String",
+    "description": "A description for 'application.security.jwt.secret-key'"
+  },
+  {
+    "name": "application.security.cookie.secure",
+    "type": "java.lang.String",
+    "description": "A description for 'application.security.cookie.secure'"
+  },
+  {
+    "name": "application.security.cookie.same-site",
+    "type": "java.lang.String",
+    "description": "A description for 'application.security.cookie.same-site'"
   }
 ]}
