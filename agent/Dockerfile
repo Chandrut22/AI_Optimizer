@@ -7,23 +7,17 @@ ENV PYTHONUNBUFFERED=1 \
 # ---- Builder Stage ----
 FROM base as builder
 
-# Install uv using pipx
 RUN --mount=type=cache,target=/root/.pip pip install pipx
 RUN pipx install uv
-
-# *** FIX: Add pipx bin directory to PATH ***
 ENV PATH="/root/.local/bin:${PATH}"
 
 WORKDIR /app
 
-# Copy dependency definition files
 COPY pyproject.toml uv.lock* ./
 
-# *** FIX: Install directly from pyproject.toml using '.' ***
-# Install dependencies using uv into the system Python site-packages
-RUN --mount=type=cache,target=/root/.cache/uv uv pip install . --system --frozen
-# Removed: uv pip install --system --frozen -r requirements.txt
-# OR potentially: uv sync --system --locked (if uv.lock is guaranteed)
+# *** FIX: Use uv sync --locked for strict reproducibility ***
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --system --locked
+# Removed: uv pip install . --system --frozen
 
 # ---- Final Stage ----
 FROM base as final
@@ -35,7 +29,7 @@ WORKDIR /home/appuser/app
 
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --chown=appuser:appgroup ./app ./app
-# COPY --chown=appuser:appgroup .env ./.env # Recommended to use Render env vars instead
+# COPY --chown=appuser:appgroup .env ./.env
 
 USER appuser
 EXPOSE 8000
