@@ -27,8 +27,10 @@ public class AuthenticationService {
 
     public AuthenticationResponse register(RegisterRequest request) {
         
-        if(userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new IllegalStateException("Email already in use");
+        // In AuthenticationService.java register method
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            // Using IllegalArgumentException is fine, or create a custom exception
+            throw new IllegalArgumentException("Email already in use: " + request.getEmail());
         }
 
         var user = User.builder()
