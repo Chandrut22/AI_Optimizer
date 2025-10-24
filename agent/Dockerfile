@@ -15,9 +15,9 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock* ./
 
-# *** FIX: Use uv sync --locked for strict reproducibility ***
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --system --locked
-# Removed: uv pip install . --system --frozen
+# *** FIX: Remove --system from uv sync ***
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked
+# Removed: --system
 
 # ---- Final Stage ----
 FROM base as final
