@@ -15,7 +15,6 @@ import com.auth.backend.service.AuthenticationService;
 import jakarta.servlet.http.HttpServletResponse;
 
 import com.auth.backend.dto.RegisterRequest;          
-import com.auth.backend.dto.AuthenticationResponse;    
 import com.auth.backend.dto.AuthenticationRequest;     
 import lombok.RequiredArgsConstructor;
 
