@@ -1,0 +1,10 @@
+[project]
+name = "agent"
+version = "0.1.0"
+description = "FastAPI Resource Server to validate JWTs from Spring Boot Auth Server"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi[standard]>=0.120.0",
+    "python-jose[cryptography]>=3.5.0",
+]

@@ -1,0 +1,19 @@
+version: '3.8' # Specify compose file version
+
+services:
+  fastapi_app:
+    # Build the image using the Dockerfile in the current directory (.)
+    build: .
+    container_name: fastapi_resource_server
+    # Pass environment variables from the .env file in the current directory
+    env_file:
+      - ./.env
+    # Map port 8000 inside the container to port 8000 on your host machine
+    ports:
+      - "8000:8000"
+    # Optional: Mount local code for live reloading during development
+    # volumes:
+    #   - ./app:/home/appuser/app
+    # Command override if you need live reload (ensure uvicorn installed with [standard])
+    # command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
