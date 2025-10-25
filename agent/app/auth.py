@@ -1,5 +1,6 @@
 import os
 import logging
+import base64 # Import base64 module
 from fastapi import Depends, HTTPException, status, Cookie
 from jose import JWTError, jwt
 from pydantic import BaseModel, ValidationError
@@ -14,19 +15,26 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # --- Configuration ---
-SECRET_KEY = os.getenv("SECRET_KEY")
-# ALGORITHM variable is no longer strictly needed for decode, but good for logging
-# ALGORITHM = os.getenv("ALGORITHM") # You can comment this out if desired
+# Get the Base64 encoded key from environment
+_encoded_secret_key = os.getenv("SECRET_KEY")
+SECRET_KEY = None # Initialize as None
+ALGORITHM = "HS256" # Hardcoded as per your requirement
 ACCESS_TOKEN_COOKIE_NAME = "access_token"
 
-# --- Startup Logging ---
-if not SECRET_KEY:
+# --- Startup Logging & Key Decoding ---
+if not _encoded_secret_key:
     logger.error("!!! SECRET_KEY environment variable not found or empty!")
 else:
-    logger.info(f"--- FastAPI Auth: Reading SECRET_KEY length: {len(SECRET_KEY)}")
+    logger.info(f"--- FastAPI Auth: Reading Base64 SECRET_KEY length: {len(_encoded_secret_key)}")
+    try:
+        # *** FIX: Decode the Base64 key to get the raw bytes ***
+        SECRET_KEY = base64.b64decode(_encoded_secret_key)
+        logger.info(f"--- FastAPI Auth: Successfully decoded SECRET_KEY (byte length: {len(SECRET_KEY)})")
+    except Exception as decode_ex:
+        logger.error(f"!!! Failed to decode Base64 SECRET_KEY: {decode_ex}")
+        # SECRET_KEY will remain None, causing validation to fail later
 
-# Log that we are specifically using HS256
-logger.info(f"--- FastAPI Auth: Hardcoded to use ALGORITHM: HS256")
+logger.info(f"--- FastAPI Auth: Using ALGORITHM: {ALGORITHM}")
 
 # --- Pydantic Model ---
 class TokenData(BaseModel):
@@ -52,41 +60,41 @@ async def get_current_user(
     token: Annotated[str, Depends(get_token_from_cookie)]
 ) -> TokenData:
     """
-    Core security dependency: Validates JWT (expecting HS256) from cookie.
+    Core security dependency: Validates JWT (HS256) from cookie using the decoded secret key.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials from cookie",
     )
 
+    # Check if the key was successfully decoded during startup
     if not SECRET_KEY:
-        logger.error("Missing SECRET_KEY configuration for JWT validation.")
+        logger.error("JWT validation cannot proceed: SECRET_KEY was not properly decoded or is missing.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error: Authentication configuration missing."
+            detail="Internal server error: Authentication configuration invalid."
         )
 
     try:
         try:
             unverified_header = jwt.get_unverified_header(token)
             logger.info(f"--- JWT Header Received: {unverified_header}")
-            # Optional: Check if header alg matches HS256 before decoding fully
-            if unverified_header.get("alg") != "HS256":
-                 logger.error(f"Token algorithm mismatch. Expected HS256 but got {unverified_header.get('alg')}")
-                 # Raise specific error for algorithm mismatch
+            # Optional: Check alg header
+            if unverified_header.get("alg") != ALGORITHM:
+                 logger.error(f"Token algorithm mismatch. Expected {ALGORITHM} but got {unverified_header.get('alg')}")
                  raise HTTPException(
                      status_code=status.HTTP_401_UNAUTHORIZED,
-                     detail=f"Invalid token algorithm. Expected HS256 but got {unverified_header.get('alg')}",
+                     detail=f"Invalid token algorithm. Expected {ALGORITHM} but got {unverified_header.get('alg')}",
                  )
         except Exception as header_ex:
             logger.error(f"Could not parse JWT header: {header_ex}")
             raise credentials_exception
 
-        # Decode and validate the JWT, explicitly allowing ONLY HS256
+        # Decode and validate the JWT using the DECODED (byte) secret key
         payload = jwt.decode(
             token,
-            SECRET_KEY,
-            algorithms=["HS256"] # <-- HARDCODED ALGORITHM
+            SECRET_KEY, # Use the decoded byte key
+            algorithms=[ALGORITHM]
         )
 
         username: str | None = payload.get("sub")
@@ -104,7 +112,8 @@ async def get_current_user(
         return token_data
 
     except JWTError as e:
-        logger.error(f"JWTError decoding/validating cookie token (HS256): {e}")
+        # Catches signature errors, expiration, etc.
+        logger.error(f"JWTError decoding/validating cookie token ({ALGORITHM}): {e}")
         credentials_exception.detail = f"Token validation error: {e}"
         raise credentials_exception
     except ValidationError as e:
