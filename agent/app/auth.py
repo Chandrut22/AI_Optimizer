@@ -11,6 +11,9 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_COOKIE_NAME = "access_token" # Define the cookie name
 
+print(f"--- FastAPI Auth: Reading SECRET_KEY length: {len(SECRET_KEY) if SECRET_KEY else 'Not Found'}")
+print(f"--- FastAPI Auth: Reading ALGORITHM: {ALGORITHM}")
+
 class TokenData(BaseModel):
     sub: str | None = None
     authorities: list[str] | None = None
