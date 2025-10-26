@@ -2,6 +2,7 @@ package com.auth.backend.model;
 
 import com.auth.backend.dto.UserResponse;
 import com.auth.backend.enums.Role;
+import com.auth.backend.enums.AuthProvider;
 
 import jakarta.persistence.*;
 
@@ -9,18 +10,19 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
-// import org.springframework.beans.factory.support.GenericTypeAwareAutowireCandidateResolver;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter; // Replaced @Data with @Getter
+import lombok.Setter; // Replaced @Data with @Setter
 import lombok.NoArgsConstructor;
 
 
-@Data
+@Getter // Use @Getter instead of @Data
+@Setter // Use @Setter instead of @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -31,10 +33,10 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_user_email", columnList = "email", unique = true)
     }
 )
-public class User implements UserDetails{
+public class User implements UserDetails {
 
     @Id
-    @GeneratedValue(strategy=GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @Column(nullable = false)
@@ -43,12 +45,20 @@ public class User implements UserDetails{
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    // --- FIX 1 ---
+    // Password MUST be nullable to allow for Google-only users
+    @Column(nullable = true) 
     private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    // --- FIX 2 ---
+    // AuthProvider should be required
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AuthProvider authProvider;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -68,7 +78,6 @@ public class User implements UserDetails{
         return this.password;
     }
 
-    // UserDetails expects username; we'll use email as username
     @Override
     public String getUsername() {
         return this.email;
@@ -94,8 +103,6 @@ public class User implements UserDetails{
         return true;
     }
 
-     // --- ADD THIS HELPER METHOD ---
-    
     /**
      * Converts this User entity to a safe-to-return UserResponse DTO.
      * @return UserResponse object without sensitive data.
@@ -109,7 +116,5 @@ public class User implements UserDetails{
             .createdAt(this.createdAt)
             .build();
     }
-
-
-
 }
+

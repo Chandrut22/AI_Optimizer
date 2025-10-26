@@ -9,6 +9,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseCookie.ResponseCookieBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -20,6 +21,10 @@ import com.auth.backend.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import java.time.Duration; // Import Duration
+import com.auth.backend.service.JwtService;
+import com.auth.backend.service.AuthenticationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +46,9 @@ public class AuthenticationService {
     private long jwtExpirationMs; // Use the existing expiration property
     @Value("${application.security.jwt.refresh-token.expiration}")
     private long refreshExpirationMs; // Use the existing expiration property
+
+    // Add this near the top with other class-level declarations
+    private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);
 
 
     // Modified return type and added HttpServletResponse parameter
@@ -120,17 +128,23 @@ public class AuthenticationService {
         }
     }
 
-    // Helper method to create and add a cookie
-    private void addTokenCookie(String cookieName, String token, Duration maxAge, HttpServletResponse response) {
-        ResponseCookie cookie = ResponseCookie.from(cookieName, token)
-                .httpOnly(true)            // Essential for security
-                .secure(cookieSecure)      // Should be true in production (HTTPS)
-                .sameSite(cookieSameSite)  // "None" for cross-subdomain, requires Secure=true
-                .path("/")                 // Available for all paths
-                .domain(cookieDomain)      // Set the root domain (e.g., .yourdomain.com)
-                .maxAge(maxAge)            // Set expiration
-                .build();
+    // Replace the addTokenCookie method with this fixed version
+    public void addTokenCookie(String cookieName, String token, Duration maxAge, HttpServletResponse response) {
+        ResponseCookieBuilder cookieBuilder = ResponseCookie.from(cookieName, token)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(maxAge);
 
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        // Only add the domain attribute if it's not null or empty
+        if (cookieDomain != null && !cookieDomain.isEmpty()) {
+            cookieBuilder.domain(cookieDomain);
+            logger.info("Setting cookie domain to: {}", cookieDomain);
+        } else {
+            logger.info("No cookie domain set, defaulting to request domain.");
+        }
+        
+        response.addHeader(HttpHeaders.SET_COOKIE, cookieBuilder.build().toString());
     }
 }
