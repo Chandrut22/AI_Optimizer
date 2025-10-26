@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.authentication.AuthenticationManager;
 // import org.springframework.security.core.Authentication;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.beans.factory.annotation.Value;
@@ -88,6 +89,35 @@ public class AuthenticationService {
         addTokenCookie("refresh_token", refreshToken, Duration.ofMillis(refreshExpirationMs), response);
 
         // No need to return AuthenticationResponse anymore
+    }
+
+    // --- NEW REFRESH TOKEN METHOD ---
+    public void refreshToken(String refreshToken, HttpServletResponse response) {
+        // 1. Extract username (email) from the refresh token
+        final String userEmail = jwtService.extractUsername(refreshToken);
+
+        if (userEmail != null) {
+            // 2. Find user in the database
+            var user = this.userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found for refresh token"));
+
+            // 3. Validate the refresh token (checks expiration, signature, and user match)
+            if (jwtService.isTokenValid(refreshToken, user)) {
+                // 4. Generate a NEW access token
+                var newAccessToken = jwtService.generateToken(user);
+
+                // 5. Set the new access token cookie (refresh token remains the same for now)
+                addTokenCookie("access_token", newAccessToken, Duration.ofMillis(jwtExpirationMs), response);
+                // Optional: Generate and set a new refresh token as well for better security (token rotation)
+                // var newRefreshToken = jwtService.generateRefreshToken(user);
+                // addTokenCookie("refresh_token", newRefreshToken, Duration.ofMillis(refreshExpirationMs), response);
+
+            } else {
+                 throw new IllegalArgumentException("Refresh token is invalid or expired");
+            }
+        } else {
+            throw new IllegalArgumentException("Cannot extract user email from refresh token");
+        }
     }
 
     // Helper method to create and add a cookie
