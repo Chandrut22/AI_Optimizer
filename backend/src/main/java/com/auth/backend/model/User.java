@@ -1,5 +1,6 @@
 package com.auth.backend.model;
 
+import com.auth.backend.dto.UserResponse;
 import com.auth.backend.enums.Role;
 
 import jakarta.persistence.*;
@@ -13,8 +14,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import jakarta.persistence.EnumType;
-import jakarta.persistence.GenerationType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -93,6 +92,22 @@ public class User implements UserDetails{
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+     // --- ADD THIS HELPER METHOD ---
+    
+    /**
+     * Converts this User entity to a safe-to-return UserResponse DTO.
+     * @return UserResponse object without sensitive data.
+     */
+    public UserResponse toUserResponse() {
+        return UserResponse.builder()
+            .id(this.id)
+            .name(this.name)
+            .email(this.email)
+            .role(this.role)
+            .createdAt(this.createdAt)
+            .build();
     }
 
 

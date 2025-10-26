@@ -3,6 +3,7 @@ package com.auth.backend.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity; // Import this
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -12,20 +13,22 @@ import com.auth.backend.service.JwtAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor // Still injects the filter
+@RequiredArgsConstructor
+@EnableMethodSecurity(prePostEnabled = true) // <<< ADD THIS ANNOTATION
 public class SecurityConfiguration {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
-    // Removed other dependencies/beans (UserDetailsService, PasswordEncoder, etc.)
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Explicitly permit ONLY these two patterns
+                        // Public endpoints
                         .requestMatchers("/hello", "/api/v1/auth/**").permitAll() 
-                        // Secure everything else
+                        
+                        // All other endpoints just need to be authenticated.
+                        // @PreAuthorize will handle role-specific checks.
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -33,5 +36,4 @@ public class SecurityConfiguration {
                 
         return http.build();
     }
-
 }
