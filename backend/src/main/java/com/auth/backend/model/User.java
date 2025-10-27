@@ -1,37 +1,31 @@
 package com.auth.backend.model;
 
 import com.auth.backend.dto.UserResponse;
-import com.auth.backend.enums.Role;
 import com.auth.backend.enums.AuthProvider;
-
+import com.auth.backend.enums.Role;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data; // Using @Data for getters, setters, etc.
+import lombok.NoArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter; // Replaced @Data with @Getter
-import lombok.Setter; // Replaced @Data with @Setter
-import lombok.NoArgsConstructor;
-
-
-@Getter // Use @Getter instead of @Data
-@Setter // Use @Setter instead of @Data
+@Data // Includes @Getter, @Setter, @ToString, @EqualsAndHashCode, @RequiredArgsConstructor
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @Entity
-@Table(
-    name = "_user",
-    indexes = {
-        @Index(name = "idx_user_email", columnList = "email", unique = true)
-    }
+@Table(name = "_user",
+       indexes = {
+           // Index for fast email lookup
+           @Index(name = "idx_user_email", columnList = "email", unique = true)
+       }
 )
 public class User implements UserDetails {
 
@@ -45,28 +39,37 @@ public class User implements UserDetails {
     @Column(unique = true, nullable = false)
     private String email;
 
-    // --- FIX 1 ---
-    // Password MUST be nullable to allow for Google-only users
-    @Column(nullable = true) 
+    @Column(nullable = true) // Must be nullable to allow Google/OAuth users
     private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
 
-    // --- FIX 2 ---
-    // AuthProvider should be required
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    // @Column(nullable = false) // Ensures every user has a provider (LOCAL or GOOGLE)
     private AuthProvider authProvider;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    // --- Verification & Reset Fields ---
+
+    @Column(columnDefinition = "boolean default false")
+    private boolean enabled = false; // Default to false for new registrations
+
+    private String verificationCode; // For email verification or password reset
+
+    private LocalDateTime codeExpiration; // Expiration time for the code
+
+    // --- Lifecycle Callbacks ---
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
+
+    // --- UserDetails Implementation ---
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -78,6 +81,10 @@ public class User implements UserDetails {
         return this.password;
     }
 
+    /**
+     * UserDetails uses "username" as the identifier.
+     * We use the email field for this purpose.
+     */
     @Override
     public String getUsername() {
         return this.email;
@@ -85,36 +92,42 @@ public class User implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return true;
+        return true; // Or add logic for this
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return true; // Or add logic for this
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
+        return true; // Or add logic for this
     }
 
     /**
+     * Spring Security will check this method.
+     * For local accounts, login fails until this is true (after verification).
+     */
+    @Override
+    public boolean isEnabled() {
+        return this.enabled;
+    }
+
+    // --- DTO Helper Method ---
+    
+    /**
      * Converts this User entity to a safe-to-return UserResponse DTO.
-     * @return UserResponse object without sensitive data.
+     * @return UserResponse object without sensitive data (like password).
      */
     public UserResponse toUserResponse() {
         return UserResponse.builder()
-            .id(this.id)
-            .name(this.name)
-            .email(this.email)
-            .role(this.role)
-            .createdAt(this.createdAt)
-            .build();
+                .id(this.id)
+                .name(this.name)
+                .email(this.email)
+                .role(this.role)
+                .createdAt(this.createdAt)
+                .authProvider(this.authProvider) // Include auth provider
+                .build();
     }
 }
-
