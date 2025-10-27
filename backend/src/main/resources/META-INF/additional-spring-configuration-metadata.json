@@ -48,5 +48,20 @@
     "name": "admin.name",
     "type": "java.lang.String",
     "description": "A description for 'admin.name'"
+  },
+  {
+    "name": "application.security.oauth2.frontend-redirect-url",
+    "type": "java.lang.String",
+    "description": "A description for 'application.security.oauth2.frontend-redirect-url'"
+  },
+  {
+    "name": "application.mail.sender-email",
+    "type": "java.lang.String",
+    "description": "A description for 'application.mail.sender-email'"
+  },
+  {
+    "name": "application.mail.sender-name",
+    "type": "java.lang.String",
+    "description": "A description for 'application.mail.sender-name'"
   }
 ]}
