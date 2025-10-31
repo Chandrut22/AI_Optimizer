@@ -114,6 +114,13 @@ public class AuthenticationController {
         }
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(HttpServletResponse response) {
+        log.info("Logout endpoint hit");
+        authenticationService.logout(response);
+        return ResponseEntity.ok("Logged out successfully.");
+    }
+
     // --- UPDATED EXCEPTION HANDLERS ---
 
     /**

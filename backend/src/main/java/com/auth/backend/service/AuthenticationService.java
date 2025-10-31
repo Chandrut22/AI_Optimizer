@@ -1,13 +1,8 @@
 package com.auth.backend.service;
 
-import com.auth.backend.dto.AuthenticationRequest;
-import com.auth.backend.dto.RegisterRequest;
-import com.auth.backend.enums.AuthProvider;
-import com.auth.backend.enums.Role;
-import com.auth.backend.model.User;
-import com.auth.backend.repository.UserRepository;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import java.time.Duration;
+import java.time.LocalDateTime;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,8 +15,15 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
+import com.auth.backend.dto.AuthenticationRequest;
+import com.auth.backend.dto.RegisterRequest;
+import com.auth.backend.enums.AuthProvider;
+import com.auth.backend.enums.Role;
+import com.auth.backend.model.User;
+import com.auth.backend.repository.UserRepository;
+
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -199,6 +201,18 @@ public class AuthenticationService {
         }
     }
 
+
+    /**
+     * Logs the user out by clearing their access and refresh token cookies.
+     */
+    public void logout(HttpServletResponse response) {
+        log.info("Logging out user by clearing cookies.");
+        // Instruct the browser to delete the access_token
+        clearTokenCookie("access_token", response);
+        // Instruct the browser to delete the refresh_token
+        clearTokenCookie("refresh_token", response);
+    }
+
     /**
      * Helper method to create and add a cookie to the HttpServletResponse.
      * Omits the domain attribute if it's null or empty (for localhost/Render testing).
@@ -220,5 +234,26 @@ public class AuthenticationService {
         }
         
         response.addHeader(HttpHeaders.SET_COOKIE, cookieBuilder.build().toString());
+    }
+
+     /**
+     * Helper method to clear a cookie by setting its maxAge to 0.
+     * Must use the same secure, sameSite, path, and domain attributes as when setting the cookie.
+     */
+    private void clearTokenCookie(String cookieName, HttpServletResponse response) {
+        ResponseCookieBuilder cookieBuilder = ResponseCookie.from(cookieName, "") // Set value to empty
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(0); // <-- Set Max-Age to 0 to expire immediately
+
+        // Must match the domain attribute used when setting the cookie
+        if (cookieDomain != null && !cookieDomain.isEmpty()) {
+            cookieBuilder.domain(cookieDomain);
+        }
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cookieBuilder.build().toString());
+        log.debug("Cleared cookie: {}", cookieName);
     }
 }

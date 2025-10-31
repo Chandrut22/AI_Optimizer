@@ -1,15 +1,17 @@
 package com.auth.backend.config;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity; // Import this
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity; // Import this
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
 import com.auth.backend.service.JwtAuthenticationFilter;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -24,12 +26,21 @@ public class SecurityConfiguration {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
-                        .requestMatchers("/hello", "/api/v1/auth/**").permitAll() 
+                        // --- UPDATED RULES ---
+                        // Explicitly list all public auth endpoints
+                        .requestMatchers(
+                                "/hello",
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/authenticate",
+                                "/api/v1/auth/verify",
+                                "/api/v1/auth/forgot-password",
+                                "/api/v1/auth/reset-password",
+                                "/api/v1/auth/refresh-token"
+                        ).permitAll()
                         
-                        // All other endpoints just need to be authenticated.
-                        // @PreAuthorize will handle role-specific checks.
-                        .anyRequest().authenticated()
+                        // /api/v1/auth/logout will now be caught by this rule
+                        .anyRequest().authenticated() 
+                        // ---------------------
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

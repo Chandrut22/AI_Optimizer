@@ -1,11 +1,8 @@
 package com.auth.backend.service; // Or config, ensure package is correct
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import java.io.IOException;
+import java.util.Arrays;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
@@ -15,11 +12,15 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.AntPathMatcher; // Import AntPathMatcher
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-import java.util.Arrays;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie; // Import AntPathMatcher
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor // Creates constructor with final fields
@@ -149,7 +150,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      */
     private boolean isPublicAuthPath(HttpServletRequest request) {
         // Define URL patterns for endpoints that should bypass JWT validation in this filter
-        String[] publicPaths = {"/api/v1/auth/**", "/hello"};
+         String[] publicPaths = {
+            "/hello",
+            "/api/v1/auth/register",
+            "/api/v1/auth/authenticate",
+            "/api/v1/auth/verify",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
+            "/api/v1/auth/refresh-token"
+            // "/oauth2/**" is handled by Spring Security's default OAuth filter, so it's implicitly public
+        };
         String requestPath = request.getServletPath(); // Get path relative to application context
 
         // Log the path being checked
