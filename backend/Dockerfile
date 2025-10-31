@@ -17,7 +17,7 @@ FROM openjdk:21-jdk-slim
 WORKDIR /app
 
 # Copy the built .jar file from the builder stage
-COPY --from=builder /app/target/*.jar app.jar
+COPY --from=builder /app/target/backend-0.0.1-SNAPSHOT.jar app.jar
 
 # Expose the port the app runs on
 EXPOSE 8080
