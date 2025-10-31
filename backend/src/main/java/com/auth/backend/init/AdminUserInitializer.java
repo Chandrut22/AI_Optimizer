@@ -1,18 +1,22 @@
-package com.auth.backend.init; // Or your main package
+package com.auth.backend.init;
 
-import com.auth.backend.enums.Role;     // Correct import for your Role enum
-import com.auth.backend.model.User;     // Correct import for your User model
-import com.auth.backend.repository.UserRepository; // Correct import for your UserRepository
-import lombok.RequiredArgsConstructor;
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-@Component // Make it a Spring bean
-@RequiredArgsConstructor // Inject dependencies via constructor
+import com.auth.backend.enums.AuthProvider;
+import com.auth.backend.enums.Role;
+import com.auth.backend.model.User;
+import com.auth.backend.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
+
+@Component
+@RequiredArgsConstructor
 public class AdminUserInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AdminUserInitializer.class);
@@ -20,37 +24,52 @@ public class AdminUserInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-     // Load values from application.properties
-    @Value("${admin.email}")
-    private String adminEmail;
-
-    @Value("${admin.password}")
-    private String adminPassword;
-
-    @Value("${admin.name:Admin User}") // optional default value
-    private String adminName;
+    private final String ADMIN_EMAIL = "admin@optimizer.com";
+    private final String ADMIN_PASSWORD = "admin123";
 
     @Override
     public void run(String... args) throws Exception {
-        // Check if the admin user already exists
-        if (userRepository.findByEmail(adminEmail).isEmpty()) {
+        Optional<User> existingAdmin = userRepository.findByEmail(ADMIN_EMAIL);
+
+        if (existingAdmin.isEmpty()) {
+            // 1. Admin user does not exist, create it
             log.info("Admin user not found, creating one...");
-
-            // Create the admin user
             User adminUser = User.builder()
-                    .name(adminName) // Or any name you prefer
-                    .email(adminEmail)
-                    .password(passwordEncoder.encode(adminPassword)) // IMPORTANT: Encode the password!
-                    .role(Role.ADMIN) // Set the role to ADMIN
-                    // createdAt will be set by @PrePersist
-                    .build();
+                    .name("Admin User")
+                    .email(ADMIN_EMAIL)
+                    .password(passwordEncoder.encode(ADMIN_PASSWORD))
+                    .role(Role.ADMIN)
+                    .authProvider(AuthProvider.LOCAL) // Set provider
+                    .enabled(true) // <<< SET TO TRUE
+                    .build(); // createdAt will be set by @PrePersist
 
-            // Save the admin user to the database
             userRepository.save(adminUser);
-
-            log.info("Admin user created successfully with email: {}", adminEmail);
+            log.info("Admin user created successfully with email: {}", ADMIN_EMAIL);
         } else {
-            log.info("Admin user with email {} already exists.", adminEmail);
+            // 2. Admin user exists, check if it needs to be updated
+            User admin = existingAdmin.get();
+            boolean needsUpdate = false;
+
+            // Check if provider is missing
+            if (admin.getAuthProvider() == null) {
+                admin.setAuthProvider(AuthProvider.LOCAL);
+                needsUpdate = true;
+                log.info("Updating existing admin user to set AuthProvider to LOCAL.");
+            }
+            
+            // Check if admin is disabled
+            if (!admin.isEnabled()) {
+                 admin.setEnabled(true);
+                 needsUpdate = true;
+                 log.info("Updating existing admin user to set enabled=true.");
+            }
+
+            if (needsUpdate) {
+                userRepository.save(admin);
+                log.info("Admin user updated.");
+            } else {
+                log.info("Admin user with email {} already exists and is correctly configured.", ADMIN_EMAIL);
+            }
         }
     }
 }
