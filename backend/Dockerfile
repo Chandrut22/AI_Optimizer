@@ -3,13 +3,11 @@ FROM maven:3.9.8-eclipse-temurin-21 AS builder
 WORKDIR /app
 
 # Copy pom.xml and download dependencies
-# Path is relative to the backend folder
-COPY pom.xml .
+COPY backend/pom.xml .
 RUN mvn dependency:go-offline
 
 # Copy the rest of the source code and build the package
-# Path is relative to the backend folder
-COPY src ./src
+COPY backend/src ./src
 RUN mvn clean package -DskipTests
 
 # Stage 2: Create the final, slim image using Java 21
