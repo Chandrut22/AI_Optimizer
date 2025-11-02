@@ -1,13 +1,7 @@
 package com.auth.backend.service;
 
-import com.auth.backend.model.User;
-import com.auth.backend.repository.UserRepository;
-
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
-import lombok.RequiredArgsConstructor;
+import java.io.IOException;
+import java.time.Duration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,8 +13,13 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.IOException;
-import java.time.Duration;
+import com.auth.backend.model.User;
+import com.auth.backend.repository.UserRepository;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
@@ -34,7 +33,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
     @Value("${application.security.oauth2.frontend-redirect-url}")
     private String frontendRedirectUrl;
-
     @Value("${application.security.jwt.expiration}")
     private long jwtExpirationMs;
     @Value("${application.security.jwt.refresh-token.expiration}")

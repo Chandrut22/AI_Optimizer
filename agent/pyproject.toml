@@ -5,7 +5,14 @@ description = "FastAPI Resource Server to validate JWTs from Spring Boot Auth Se
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "aiohttp>=3.13.2",
+    "asyncio>=4.0.0",
+    "beautifulsoup4>=4.14.2",
     "fastapi[standard]>=0.120.0",
+    "langchain-google-genai>=3.0.0",
+    "langchain-tavily>=0.2.12",
+    "langchain-tools>=0.1.34",
+    "lxml>=6.0.2",
     "python-jose[cryptography]>=3.5.0",
     "uvicorn[standard]>=0.38.0",
 ]
