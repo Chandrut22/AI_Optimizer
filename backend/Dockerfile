@@ -11,7 +11,8 @@ COPY backend/src ./src
 RUN mvn clean package -DskipTests
 
 # Stage 2: Create the final, slim image using Java 21
-FROM openjdk:21-jdk-slim
+# ---- This line has been fixed ----
+FROM eclipse-temurin:21-jdk-slim
 WORKDIR /app
 
 # Copy the built .jar file from the builder stage
