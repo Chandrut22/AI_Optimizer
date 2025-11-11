@@ -7,7 +7,6 @@ FROM python:3.10-slim-buster
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Set working directory
 WORKDIR /app
 
 # -----------------------------
@@ -28,16 +27,10 @@ RUN uv pip install --system --no-cache-dir .
 # -----------------------------
 # Copy application source
 # -----------------------------
-COPY ./app ./app
+COPY app ./app
 
 # Create logs directory
-RUN mkdir -p /app/logs
-
-# -----------------------------
-# Create a non-root user for security
-# -----------------------------
-RUN adduser --disabled-password --gecos '' appuser
-USER appuser
+RUN mkdir -p /app/logs && chown -R root:root /app/logs
 
 # -----------------------------
 # Expose port for FastAPI
@@ -45,6 +38,6 @@ USER appuser
 EXPOSE 8000
 
 # -----------------------------
-# Run FastAPI app (Render sets $PORT automatically)
+# Run FastAPI app with Render's $PORT
 # -----------------------------
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port $PORT"]

@@ -1,66 +1,51 @@
-# In app/main.py
-from fastapi import FastAPI, Depends
-from typing import Annotated
-from .auth import get_current_user, TokenData
-# --- Add CORS imports ---
-from fastapi.middleware.cors import CORSMiddleware
-import os # To read allowed origins from environment
-# ------------------------
+# app/main.py
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from app.core.logger import configure_logging, get_logger
+from app.middleware.security import setup_middlewares
+from app.middleware.request_logger import RequestLoggingMiddleware
+from app.routers import service, health, debug, ai
+from app.core.config import settings
 
-app = FastAPI()
-
-# --- Configure CORS ---
-# Read allowed origins from environment variable, split by comma
-allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "") # Default to empty string
-origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
-
-# Fallback for local development if variable not set
-if not origins:
-    origins = [
-        "http://localhost:5173", # Default Vite port
-        "http://localhost:3000", # Common React dev port
-    ]
-    print(f"Warning: ALLOWED_ORIGINS not set, falling back to defaults: {origins}")
+configure_logging()
+logger = get_logger("app.main")
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins, # List of allowed origins
-    allow_credentials=True, # <<< IMPORTANT for cookies
-    allow_methods=["*"],    # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"],    # Allow all headers
-)
-# ------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting FastAPI service...")
+    yield
+    logger.info("Shutting down FastAPI service...")
 
 
-# --- Your Endpoints ---
-@app.get("/")
-async def read_root():
-    return {"message": "Hello World - Public Endpoint"}
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="FastAPI Activation Service",
+        version="1.0.0",
+        description="Validates Spring Boot activation_token JWTs and exposes /api/service",
+        lifespan=lifespan,
+    )
 
-@app.get("/api/secure")
-async def read_secure_data(
-    current_user: Annotated[TokenData, Depends(get_current_user)]
-):
-    return {
-        "message": "Hello, this is secured data!",
-        "user_email": current_user.sub,
-        "user_roles": current_user.authorities
-    }
-@app.get("/api/admin")
-async def read_admin_data(
-    current_user: Annotated[TokenData, Depends(get_current_user)]
-):
-    """
-    Requires a valid JWT in the access_token cookie AND the ADMIN role.
-    """
-    # Check if authorities list exists and contains "ADMIN"
-    if not current_user.authorities or "ADMIN" not in current_user.authorities:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Requires ADMIN role"
-        )
-    return {
-        "message": "Hello, Admin!",
-        "user_email": current_user.sub
-    }
+    # Middlewares & logging
+    setup_middlewares(app)
+    app.add_middleware(RequestLoggingMiddleware)
+
+    # Routers
+    app.include_router(health.router, prefix="/health", tags=["Health"])
+    app.include_router(service.router, prefix="/api", tags=["API"])
+    app.include_router(ai.router, prefix="/api", tags=["Agent"])
+    # debug routes should be mounted only if debug enabled (see below)
+    if settings.DEBUG:
+        app.include_router(debug.router, prefix="/debug", tags=["Debug"])
+
+    # Generic exception handler (logs and returns minimal info)
+    @app.exception_handler(Exception)
+    async def generic_exception_handler(request: Request, exc: Exception):
+        logger.error("Unhandled exception: %s", exc, exc_info=True)
+        return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
+    return app
+
+
+app = create_app()
