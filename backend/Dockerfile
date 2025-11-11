@@ -1,25 +1,36 @@
-# Stage 1: Build the application using Maven and Java 21
-FROM maven:3.9.8-eclipse-temurin-21 AS builder
+# ===============================
+# Stage 1: Build the Spring Boot JAR
+# ===============================
+FROM maven:3.9.8-eclipse-temurin-21 AS build
+
+# Set working directory
 WORKDIR /app
 
-# Copy pom.xml and download dependencies
-COPY backend/pom.xml .
-RUN mvn dependency:go-offline
+# Copy Maven project files
+COPY pom.xml .
 
-# Copy the rest of the source code and build the package
-COPY backend/src ./src
+# Pre-download dependencies to speed up future builds
+RUN mvn dependency:go-offline -B
+
+# Copy the rest of the source code
+COPY src ./src
+
+# Package the application (skip tests for faster build)
 RUN mvn clean package -DskipTests
 
-# Stage 2: Create the final, slim image using Java 21
-# ---- This line has been fixed ----
-FROM eclipse-temurin:21-jdk-slim
+# ===============================
+# Stage 2: Run the Spring Boot app
+# ===============================
+FROM eclipse-temurin:21-jdk
+
+# Set working directory
 WORKDIR /app
 
-# Copy the built .jar file from the builder stage
-COPY --from=builder /app/target/backend-0.0.1-SNAPSHOT.jar app.jar
+# Copy the JAR file from the build stage
+COPY --from=build /app/target/*.jar app.jar
 
-# Expose the port the app runs on
+# Expose port (adjust if your app runs on a different port)
 EXPOSE 8080
 
-# The command to run the application
+# Default command to run the Spring Boot app
 ENTRYPOINT ["java", "-jar", "app.jar"]
