@@ -72,7 +72,8 @@ public class User implements UserDetails {
     private LocalDate lastRequestDate;
 
     // Tracks the number of requests made today
-    @Column(name = "daily_request_count", nullable = false)
+    // Tracks the number of requests made today
+    @Column(name = "daily_request_count", nullable = false, columnDefinition = "integer default 0")
     private int dailyRequestCount = 0;
 
     // --- Lifecycle Callbacks ---
