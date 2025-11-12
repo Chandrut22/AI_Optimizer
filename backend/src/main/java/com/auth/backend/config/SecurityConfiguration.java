@@ -35,10 +35,10 @@ public class SecurityConfiguration {
                                 "/api/v1/auth/verify",
                                 "/api/v1/auth/forgot-password",
                                 "/api/v1/auth/reset-password",
-                                "/api/v1/auth/refresh-token"
+                                "/api/v1/auth/refresh-token",
+                                "/api/v1/internal/**"
                         ).permitAll()
                         
-                        // /api/v1/auth/logout will now be caught by this rule
                         .anyRequest().authenticated() 
                         // ---------------------
                 )

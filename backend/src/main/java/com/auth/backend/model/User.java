@@ -6,12 +6,14 @@ import com.auth.backend.enums.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data; // Using @Data for getters, setters, etc.
+import lombok.Data; 
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDate; 
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -22,10 +24,10 @@ import java.util.List;
 @AllArgsConstructor
 @Entity
 @Table(name = "_user",
-       indexes = {
-           // Index for fast email lookup
-           @Index(name = "idx_user_email", columnList = "email", unique = true)
-       }
+        indexes = {
+                // Index for fast email lookup
+                @Index(name = "idx_user_email", columnList = "email", unique = true)
+        }
 )
 public class User implements UserDetails {
 
@@ -47,9 +49,10 @@ public class User implements UserDetails {
     private Role role;
 
     @Enumerated(EnumType.STRING)
-    // @Column(nullable = false) // Ensures every user has a provider (LOCAL or GOOGLE)
+    @Column(nullable = false) // Ensures every user has a provider (LOCAL or GOOGLE)
     private AuthProvider authProvider;
 
+    @CreationTimestamp // Use @CreationTimestamp for automatic setting
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -62,12 +65,23 @@ public class User implements UserDetails {
 
     private LocalDateTime codeExpiration; // Expiration time for the code
 
+    // --- ADD FREE TRIAL FIELDS HERE ---
+
+    // Tracks the last day a request was made, to know when to reset the counter
+    @Column(name = "last_request_date")
+    private LocalDate lastRequestDate;
+
+    // Tracks the number of requests made today
+    @Column(name = "daily_request_count", nullable = false)
+    private int dailyRequestCount = 0;
+
     // --- Lifecycle Callbacks ---
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
+    // @PrePersist is no longer needed if using @CreationTimestamp
+    // @PrePersist
+    // protected void onCreate() {
+    //     this.createdAt = LocalDateTime.now();
+    // }
 
     // --- UserDetails Implementation ---
 
@@ -115,7 +129,7 @@ public class User implements UserDetails {
     }
 
     // --- DTO Helper Method ---
-    
+
     /**
      * Converts this User entity to a safe-to-return UserResponse DTO.
      * @return UserResponse object without sensitive data (like password).

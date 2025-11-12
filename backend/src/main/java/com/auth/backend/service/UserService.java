@@ -1,13 +1,15 @@
 package com.auth.backend.service;
 
-import com.auth.backend.dto.UserResponse;
-import com.auth.backend.model.User;
-import com.auth.backend.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import com.auth.backend.dto.UserResponse;
+import com.auth.backend.model.User;
+import com.auth.backend.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +25,7 @@ public class UserService {
     public UserResponse getMyInfo() {
         // Get the authentication object from Spring Security's context
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
+
         // The principal's name is the email (as defined in User.getUsername())
         String userEmail = authentication.getName();
 
