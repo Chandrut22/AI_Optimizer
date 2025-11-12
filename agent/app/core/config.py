@@ -7,17 +7,13 @@ import json
 
 class Settings(BaseSettings):
     # --- JWT Settings ---
-    # This MUST be set to "RS256" to match your JwtService.java
     ACTIVATION_ALGORITHM: str = Field(default="RS256", description="JWT signing algorithm")
-    
-    # This MUST be set to the PUBLIC key from your Spring Boot app
     ACTIVATION_PUBLIC_KEY: Optional[str] = Field(
         default=None, 
         description="PEM-formatted public key for RS256 validation"
     )
     
-    # --- Optional Claims for Stricter Validation ---
-    # Your JwtService.java doesn't set these, but it's good practice
+    # --- Optional Claims ---
     AUTH_ISSUER: Optional[str] = Field(None, description="The 'iss' claim (optional)")
     AUTH_AUDIENCE: Optional[str] = Field(None, description="The 'aud' claim (optional)")
     
@@ -26,8 +22,14 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(default=False, description="Enable debug mode")
     LOG_LEVEL: str = Field(default="INFO", description="Log level")
     LOG_FILE: str = Field(default="logs/app.log", description="Path to log file")
+
+    # --- ADD THIS LINE ---
+    SPRING_BOOT_INTERNAL_URL: str = Field(
+        ..., 
+        description="Base URL for the internal Spring Boot service"
+    )
+    # ---------------------
     
-    # This is no longer needed for RS256 validation, but fine to keep
     ACTIVATION_SECRET: Optional[str] = Field(default=None, description="JWT secret (for HS256)")
 
 
