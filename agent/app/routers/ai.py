@@ -1,17 +1,17 @@
 # app/routers/ai.py
 import httpx 
-from fastapi import APIRouter, Depends, status, HTTPException, Request # <-- 1. IMPORT Request
+from fastapi import APIRouter, Depends, status, HTTPException, Request # <-- IMPORT Request
 from pydantic import BaseModel, Field
 from app.auth.dependencies import get_current_activation_user
 from app.auth.models import UserClaims
-from app.core.config import settings
+from app.core.config import settings # <-- IMPORT settings
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# ... (QuestionRequest and AnswerResponse models are unchanged) ...
+
 class QuestionRequest(BaseModel):
     question: str = Field(..., description="The question text to ask")
 
@@ -20,7 +20,7 @@ class AnswerResponse(BaseModel):
     message: str = Field(..., description="Response status message")
     user_id: str = Field(..., description="User id from token `sub`")
     answer: str = Field(..., description="Generated answer for the question")
-# ...
+
 
 @router.post(
     "/ai/ask",
@@ -30,7 +30,7 @@ class AnswerResponse(BaseModel):
 )
 def ask_question(
     request: QuestionRequest,
-    fastapi_request: Request, # <-- 2. INJECT the Request object
+    fastapi_request: Request, # <-- INJECT the Request object
     user: UserClaims = Depends(get_current_activation_user),
 ) -> AnswerResponse:
     """
@@ -40,26 +40,25 @@ def ask_question(
 
     logger.info("User %s asking: %s. Checking limits...", user.sub, request.question)
 
-    # Build the URL from settings
-    check_url = f"{settings.SPRING_BOOT_INTERNAL_URL}/api/v1/internal/users/{user.sub}/check-limit"
+    # --- 1. Build the new URL (no user email/ID in the path) ---
+    check_url = f"{settings.SPRING_BOOT_INTERNAL_URL}/api/v1/internal/users/check-limit"
     
-    # --- 3. GET THE USER'S TOKEN FROM THE INCOMING REQUEST ---
+    # --- 2. Get the user's token from the incoming request ---
     auth_header = fastapi_request.headers.get("Authorization")
     
     if not auth_header:
-        # This should technically be caught by get_current_activation_user,
-        # but it's good defensive programming.
+        # This is a fallback; get_current_activation_user should catch it first.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Missing Authorization header"
         )
 
-    # --- 4. PREPARE THE HEADER TO FORWARD TO SPRING BOOT ---
+    # --- 3. Prepare the header to forward to Spring Boot ---
     headers = {"Authorization": auth_header}
 
     try:
         with httpx.Client() as client:
-            # --- 5. SEND THE REQUEST WITH THE USER'S TOKEN ---
+            # --- 4. Send the request with the user's forwarded token ---
             response = client.post(check_url, headers=headers)
 
         # Check if the backend denied the request
@@ -74,7 +73,7 @@ def ask_question(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail="You have exceeded your daily limit of 10 AI requests."
                 )
-            # --- This error will now be 401 (Unauthorized) ---
+            # 401 (token invalid) or 403 (token valid, but forbidden)
             elif response.status_code == 401 or response.status_code == 403:
                 logger.warning("Token forwarding failed. Spring Boot rejected the token.")
                 raise HTTPException(
@@ -82,6 +81,7 @@ def ask_question(
                     detail="Invalid credentials."
                 )
             else: # Other error
+                logger.error("Spring Boot returned an unexpected status: %s", response.status_code)
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=response.json().get("reason", "An error occurred with your account.")

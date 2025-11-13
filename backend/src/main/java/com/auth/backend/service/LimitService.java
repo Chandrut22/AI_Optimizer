@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class LimitService {
 
-    private final UserRepository userRepository;
+    private final UserRepository userRepository; //
 
     /**
      * A simple helper class to return the result of the limit check.
@@ -39,18 +39,19 @@ public class LimitService {
      * Checks if a user is allowed to make a request based on their trial status and daily limits.
      * If allowed, it increments their daily count. This entire operation is atomic.
      *
-     * @param userId The ID of the user to check.
+     * @param email The email of the user to check (from JWT 'sub' claim).
      * @return A LimitCheckResponse object with the result.
      */
     @Transactional // This is CRITICAL. It ensures data consistency.
-    public LimitCheckResponse checkAndIncrementLimit(Integer userId) {
-        // Use findById and handle the Optional
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + userId));
+    public LimitCheckResponse checkAndIncrementLimitByEmail(String email) {
+        
+        // 1. Find the user by their email
+        User user = userRepository.findByEmail(email) //
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         LocalDate today = LocalDate.now();
 
-        // 1. Check if 14-day trial is expired
+        // 2. Check if 14-day trial is expired
         // We use the User's createdAt field for this
         LocalDateTime trialEndDate = user.getCreatedAt().plusDays(14);
         if (LocalDateTime.now().isAfter(trialEndDate)) {
@@ -58,20 +59,20 @@ public class LimitService {
             return new LimitCheckResponse(false, "TRIAL_EXPIRED", 402);
         }
 
-        // 2. Check if it's a new day. If so, reset the counter.
+        // 3. Check if it's a new day. If so, reset the counter.
         if (user.getLastRequestDate() == null || !user.getLastRequestDate().isEqual(today)) {
             user.setDailyRequestCount(0);
             user.setLastRequestDate(today);
         }
 
-        // 3. Check if daily limit is reached
+        // 4. Check if daily limit is reached
         if (user.getDailyRequestCount() >= 10) {
             // Return 429 Too Many Requests
             return new LimitCheckResponse(false, "DAILY_LIMIT_REACHED", 429);
         }
 
-        // 4. All checks passed. Increment and allow.
-        user.setDailyRequestCount(user.getDailyRequestCount() + 1);
+        // 5. All checks passed. Increment and allow.
+        user.setDailyRequestCount(user.getDailyRequestCount() + 1); //
         userRepository.save(user); // The @Transactional will handle the commit
 
         return new LimitCheckResponse(true, "ALLOWED", 200);
