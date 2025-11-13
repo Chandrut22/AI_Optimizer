@@ -1,17 +1,5 @@
 package com.auth.backend.service;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Service;
-
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -27,12 +15,22 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service; // <-- Make sure this is java.util.Base64
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+
 @Service
 public class JwtService {
 
     private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
-    // Inject keys from application.properties (which get them from env vars)
     @Value("${application.security.jwt.private-key}")
     private String privateKeyPem;
 
@@ -45,6 +43,7 @@ public class JwtService {
     @Value("${application.security.jwt.refresh-token.expiration}")
     private long refreshExpiration;
 
+    // Lazily loaded keys
     private PrivateKey signInKey;
     private PublicKey validationKey;
 
@@ -59,6 +58,7 @@ public class JwtService {
 
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> extraClaims = new HashMap<>();
+        // Add roles ("authorities") to the token
         extraClaims.put("authorities", userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList()));
@@ -80,18 +80,28 @@ public class JwtService {
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                // Sign with the Private Key using RS256
+                // --- SIGN WITH RS256 and the PRIVATE KEY ---
                 .signWith(getSignInKey(), SignatureAlgorithm.RS256)
                 .compact();
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+        try {
+            final String username = extractUsername(token);
+            return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+        } catch (Exception e) {
+            log.warn("JWT validation error: {}", e.getMessage());
+            return false;
+        }
     }
 
     private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+        try {
+            return extractExpiration(token).before(new Date());
+        } catch (Exception e) {
+            log.warn("JWT expired or invalid: {}", e.getMessage());
+            return true; // If we can't parse expiration, treat it as expired
+        }
     }
 
     private Date extractExpiration(String token) {
@@ -99,18 +109,19 @@ public class JwtService {
     }
 
     private Claims extractAllClaims(String token) {
-        // Parse and validate the token using the Public Key
+        // --- VALIDATE WITH THE PUBLIC KEY ---
         return Jwts
                 .parserBuilder()
-                .setSigningKey(getValidationKey()) // Use Public Key for validation
+                .setSigningKey(getValidationKey()) // Use the PUBLIC key to validate
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
 
+    // --- HELPER METHODS for RS256 ---
+
     /**
-     * Gets the PrivateKey used for signing tokens.
-     * Lazily loads and parses the key from the PEM string.
+     * Gets the PrivateKey used for SIGNING tokens.
      */
     private Key getSignInKey() {
         if (signInKey == null) {
@@ -120,8 +131,7 @@ public class JwtService {
     }
 
     /**
-     * Gets the PublicKey used for validating tokens.
-     * Lazily loads and parses the key from the PEM string.
+     * Gets the PublicKey used for VALIDATING tokens.
      */
     private Key getValidationKey() {
         if (validationKey == null) {
@@ -130,60 +140,58 @@ public class JwtService {
         return validationKey;
     }
 
-    // --- HELPER METHODS FOR PARSING PEM KEYS ---
-
     /**
-     * Parses a PEM-formatted string into a PrivateKey object.
+     * Parses a PEM-formatted, single-line-with-\n string into a PrivateKey object.
      */
     private PrivateKey parsePrivateKey(String pemKey) {
         try {
-            // 1. Clean the PEM string
-            String privateKeyContent = pemKey
-                    .replaceAll("\\s+", "") // Remove all whitespace
-                    .replace("-----BEGINRSAPRIVATEKEY-----", "")
-                    .replace("-----ENDRSAPRIVATEKEY-----", "")
-                    .replace("-----BEGINPRIVATEKEY-----", "")
-                    .replace("-----ENDPRIVATEKEY-----", "");
+            // 1. Turn the literal "\n" strings back into real newlines
+            String formattedKey = pemKey.replace("\\n", "\n");
 
-            // 2. Base64 decode the key content
-            byte[] keyBytes = Base64.getDecoder().decode(privateKeyContent);
+            // 2. Remove ONLY the header and footer
+            String privateKeyContent = formattedKey
+                    .replace("-----BEGIN PRIVATE KEY-----", "")
+                    .replace("-----END PRIVATE KEY-----", "")
+                    .replace("-----BEGIN RSA PRIVATE KEY-----", "") // Handle alternate format
+                    .replace("-----END RSA PRIVATE KEY-----", "");
+                    // We DO NOT use replaceAll("\\s", "") here
 
-            // 3. Create a key specification
+            // 3. Decode. The MimeDecoder handles newlines/whitespace!
+            byte[] keyBytes = Base64.getMimeDecoder().decode(privateKeyContent);
+
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
-
-            // 4. Get KeyFactory instance and generate key
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
             return keyFactory.generatePrivate(keySpec);
 
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            log.error("Could not parse RSA private key", e);
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException | IllegalArgumentException e) {
+            log.error("Could not parse RSA private key. Check formatting.", e);
             throw new RuntimeException("Could not parse private key", e);
         }
     }
 
     /**
-     * Parses a PEM-formatted string into a PublicKey object.
+     * Parses a PEM-formatted, single-line-with-\n string into a PublicKey object.
      */
     private PublicKey parsePublicKey(String pemKey) {
         try {
-            // 1. Clean the PEM string
-            String publicKeyContent = pemKey
-                    .replaceAll("\\s+", "") // Remove all whitespace
-                    .replace("-----BEGINPUBLICKEY-----", "")
-                    .replace("-----ENDPUBLICKEY-----", "");
-
-            // 2. Base64 decode the key content
-            byte[] keyBytes = Base64.getDecoder().decode(publicKeyContent);
+            // 1. Turn the literal "\n" strings back into real newlines
+            String formattedKey = pemKey.replace("\\n", "\n");
             
-            // 3. Create a key specification
-            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+            // 2. Remove ONLY the header and footer
+            String publicKeyContent = formattedKey
+                    .replace("-----BEGIN PUBLIC KEY-----", "")
+                    .replace("-----END PUBLIC KEY-----", "");
+                    // We DO NOT use replaceAll("\\s", "") here
 
-            // 4. Get KeyFactory instance and generate key
+            // 3. Decode. The MimeDecoder handles newlines/whitespace!
+            byte[] keyBytes = Base64.getMimeDecoder().decode(publicKeyContent);
+
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
             return keyFactory.generatePublic(keySpec);
 
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            log.error("Could not parse RSA public key", e);
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException | IllegalArgumentException e) {
+            log.error("Could not parse RSA public key. Check formatting.", e);
             throw new RuntimeException("Could not parse public key", e);
         }
     }
