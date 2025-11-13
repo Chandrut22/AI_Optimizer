@@ -1,10 +1,9 @@
-# app/routers/ai.py
 import httpx 
-from fastapi import APIRouter, Depends, status, HTTPException, Request # <-- IMPORT Request
+from fastapi import APIRouter, Depends, status, HTTPException, Request # <-- Make sure Request is imported
 from pydantic import BaseModel, Field
 from app.auth.dependencies import get_current_activation_user
 from app.auth.models import UserClaims
-from app.core.config import settings # <-- IMPORT settings
+from app.core.config import settings # <-- Make sure settings are imported
 import logging
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ class AnswerResponse(BaseModel):
 )
 def ask_question(
     request: QuestionRequest,
-    fastapi_request: Request, # <-- INJECT the Request object
+    fastapi_request: Request, # <-- Inject the Request object
     user: UserClaims = Depends(get_current_activation_user),
 ) -> AnswerResponse:
     """
@@ -40,8 +39,9 @@ def ask_question(
 
     logger.info("User %s asking: %s. Checking limits...", user.sub, request.question)
 
-    # --- 1. Build the new URL (no user email/ID in the path) ---
-    check_url = f"{settings.SPRING_BOOT_INTERNAL_URL}/api/v1/internal/users/check-limit"
+    # --- 1. THIS IS THE NEW, CORRECT URL ---
+    # It points to /api/v1/usage/check-limit
+    check_url = f"{settings.SPRING_BOOT_INTERNAL_URL}/api/v1/usage/check-limit"
     
     # --- 2. Get the user's token from the incoming request ---
     auth_header = fastapi_request.headers.get("Authorization")

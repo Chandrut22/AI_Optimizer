@@ -1,6 +1,6 @@
 package com.auth.backend.controller;
 
-import java.util.Map;
+import java.util.Map; //
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -14,34 +14,29 @@ import com.auth.backend.service.LimitService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/v1/internal")
+// --- 1. CHANGE THIS LINE ---
+@RequestMapping("/api/v1/usage") // <-- Renamed from /internal
 @RequiredArgsConstructor
-public class InternalController {
+// --- (Optional) Rename class to UsageController ---
+public class InternalController { 
 
     private final LimitService limitService;
 
     /**
      * Internal endpoint for the FastAPI agent to check usage limits.
      * It gets the user's email from the forwarded JWT.
-     *
-     * @param authentication The authenticated user from Spring Security.
-     * @return A ResponseEntity with the check result.
      */
-    // --- 1. CHANGE THE URL (remove {email}) ---
-    @PostMapping("/users/check-limit")
-    // --- 2. CHANGE THE METHOD SIGNATURE (inject Authentication) ---
+    // --- 2. THIS URL IS NOW /api/v1/usage/check-limit ---
+    @PostMapping("/check-limit") 
     public ResponseEntity<?> checkUserLimit(Authentication authentication) { 
         
-        // --- 3. GET THE EMAIL FROM THE TOKEN ---
         if (authentication == null || !authentication.isAuthenticated()) {
              return ResponseEntity.status(401)
                     .body(Map.of("allowed", false, "reason", "UNAUTHENTICATED"));
         }
         String email = authentication.getName(); // This is the user's email
-        // ------------------------------------
 
         try {
-            // Call the service method (this one is already correct)
             LimitService.LimitCheckResponse response = limitService.checkAndIncrementLimitByEmail(email); 
 
             return ResponseEntity.status(response.getHttpStatus())
