@@ -26,8 +26,6 @@ public class SecurityConfiguration {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // --- UPDATED RULES ---
-                        // Explicitly list all public auth endpoints
                         .requestMatchers(
                                 "/hello",
                                 "/api/v1/auth/register",
@@ -35,12 +33,10 @@ public class SecurityConfiguration {
                                 "/api/v1/auth/verify",
                                 "/api/v1/auth/forgot-password",
                                 "/api/v1/auth/reset-password",
-                                "/api/v1/auth/refresh-token",
-                                "/api/v1/internal/**"
+                                "/api/v1/auth/refresh-token"
                         ).permitAll()
                         
                         .anyRequest().authenticated() 
-                        // ---------------------
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
