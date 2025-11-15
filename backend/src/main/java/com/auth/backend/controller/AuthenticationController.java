@@ -19,6 +19,7 @@ import com.auth.backend.dto.RegisterRequest;
 import com.auth.backend.dto.ResetPasswordRequest;
 import com.auth.backend.dto.VerificationRequest;
 import com.auth.backend.service.AuthenticationService;
+import com.auth.backend.dto.AuthenticationResponse;
 
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.Cookie;

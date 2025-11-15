@@ -14,8 +14,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import com.auth.backend.dto.AuthenticationRequest;
+import com.auth.backend.dto.AuthenticationResponse;
 import com.auth.backend.dto.RegisterRequest;
 import com.auth.backend.dto.RegisterResponse;
 import com.auth.backend.enums.AccountTier;
