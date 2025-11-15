@@ -14,12 +14,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import com.auth.backend.dto.AuthenticationRequest;
 import com.auth.backend.dto.AuthenticationResponse;
 import com.auth.backend.dto.RegisterRequest;
-import com.auth.backend.dto.RegisterResponse;
 import com.auth.backend.enums.AccountTier;
 import com.auth.backend.enums.AuthProvider;
 import com.auth.backend.enums.Role;
@@ -119,7 +117,7 @@ public class AuthenticationService {
         // --- 4. THE CRITICAL FIX ---
         // Return the DTO with *only* the flag, as you wanted.
         return AuthenticationResponse.builder()
-                .hasSelectedTier(user.getHasSelectedTier())
+                .hasSelectedTier(user.isHasSelectedTier())
                 .build();
     }
 

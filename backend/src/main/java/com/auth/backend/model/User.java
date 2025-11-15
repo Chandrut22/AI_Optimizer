@@ -1,32 +1,43 @@
 package com.auth.backend.model;
 
-import com.auth.backend.dto.UserResponse;
-import com.auth.backend.enums.AccountTier;
-import com.auth.backend.enums.AuthProvider;
-import com.auth.backend.enums.Role;
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data; 
-import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-
-import java.time.LocalDate; 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
-@Data // Includes @Getter, @Setter, @ToString, @EqualsAndHashCode, @RequiredArgsConstructor
+import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;   // <-- ADD @Getter
+
+import com.auth.backend.dto.UserResponse;
+import com.auth.backend.enums.AccountTier;   // <-- ADD @Setter
+import com.auth.backend.enums.AuthProvider;
+import com.auth.backend.enums.Role;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter // ADD this
+@Setter // ADD this
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
 @Table(name = "_user",
         indexes = {
-                // Index for fast email lookup
                 @Index(name = "idx_user_email", columnList = "email", unique = true)
         }
 )
@@ -42,56 +53,54 @@ public class User implements UserDetails {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = true) // Must be nullable to allow Google/OAuth users
+    @Column(nullable = true)
     private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role;
+    @Builder.Default // <-- ADD this to fix build warning
+    private Role role = Role.USER;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false) // Ensures every user has a provider (LOCAL or GOOGLE)
-    private AuthProvider authProvider;
+    @Column(nullable = false)
+    @Builder.Default // <-- ADD this to fix build warning
+    private AuthProvider authProvider = AuthProvider.LOCAL;
 
-    @CreationTimestamp // Use @CreationTimestamp for automatic setting
+    @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     // --- Verification & Reset Fields ---
 
+    // Note: @Getter on the class will create isEnabled(),
+    // which correctly matches the method signature for UserDetails.
     @Column(columnDefinition = "boolean default false")
-    private boolean enabled = false; // Default to false for new registrations
+    @Builder.Default // <-- ADD this to fix build warning
+    private boolean enabled = false;
 
-    private String verificationCode; // For email verification or password reset
+    private String verificationCode;
 
-    private LocalDateTime codeExpiration; // Expiration time for the code
+    private LocalDateTime codeExpiration;
 
     // --- ADD FREE TRIAL FIELDS HERE ---
 
-    // Tracks the last day a request was made, to know when to reset the counter
     @Column(name = "last_request_date")
     private LocalDate lastRequestDate;
 
-    // Tracks the number of requests made today
-    // Tracks the number of requests made today
     @Column(name = "daily_request_count", nullable = false, columnDefinition = "integer default 0")
+    @Builder.Default // <-- ADD this to fix build warning
     private int dailyRequestCount = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "VARCHAR(50) DEFAULT 'FREE'")
+    @Builder.Default // <-- ADD this to fix build warning
     private AccountTier accountTier = AccountTier.FREE;
 
     @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
+    @Builder.Default // <-- ADD this to fix build warning
     private boolean hasSelectedTier = false;
-
-    // --- Lifecycle Callbacks ---
-
-    // @PrePersist is no longer needed if using @CreationTimestamp
-    // @PrePersist
-    // protected void onCreate() {
-    //     this.createdAt = LocalDateTime.now();
-    // }
-
+    
+    
     // --- UserDetails Implementation ---
 
     @Override
@@ -104,10 +113,6 @@ public class User implements UserDetails {
         return this.password;
     }
 
-    /**
-     * UserDetails uses "username" as the identifier.
-     * We use the email field for this purpose.
-     */
     @Override
     public String getUsername() {
         return this.email;
@@ -115,22 +120,22 @@ public class User implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return true; // Or add logic for this
+        return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true; // Or add logic for this
+        return true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true; // Or add logic for this
+        return true;
     }
 
     /**
      * Spring Security will check this method.
-     * For local accounts, login fails until this is true (after verification).
+     * This override is correct and works with @Getter.
      */
     @Override
     public boolean isEnabled() {
@@ -139,10 +144,6 @@ public class User implements UserDetails {
 
     // --- DTO Helper Method ---
 
-    /**
-     * Converts this User entity to a safe-to-return UserResponse DTO.
-     * @return UserResponse object without sensitive data (like password).
-     */
     public UserResponse toUserResponse() {
         return UserResponse.builder()
                 .id(this.id)
@@ -150,7 +151,7 @@ public class User implements UserDetails {
                 .email(this.email)
                 .role(this.role)
                 .createdAt(this.createdAt)
-                .authProvider(this.authProvider) // Include auth provider
+                .authProvider(this.authProvider)
                 .build();
     }
 }

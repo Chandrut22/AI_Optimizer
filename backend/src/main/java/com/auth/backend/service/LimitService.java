@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.auth.backend.enums.AccountTier;
 import com.auth.backend.model.User;
 import com.auth.backend.repository.UserRepository;
 
@@ -50,7 +51,7 @@ public class LimitService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         // --- 1. (NEW) TIER SELECTION CHECK (RUNS FIRST) ---
-        if (!user.getHasSelectedTier()) {
+        if (!user.isHasSelectedTier()) {
             // Return 403 Forbidden. This tells the frontend something is
             // wrong, and it should redirect to the selection page.
             return new LimitCheckResponse(false, "TIER_NOT_SELECTED", 403); 
