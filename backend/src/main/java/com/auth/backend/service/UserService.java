@@ -37,6 +37,19 @@ public class UserService {
         return user.toUserResponse();
     }
 
+    @Transactional
+    public void selectAccountTier(String email, AccountTier tier) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        // (In a real app, selecting PRO would go to a payment flow first)
+
+        user.setAccountTier(tier);
+        user.setHasSelectedTier(true); // <-- This is the important part
+
+        userRepository.save(user);
+    }
+
     // You could add other user-specific methods here later, like:
     // public UserResponse updateMyPassword(String oldPassword, String newPassword) { ... }
     // public UserResponse updateMyName(String newName) { ... }

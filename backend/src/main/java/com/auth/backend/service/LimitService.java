@@ -49,6 +49,23 @@ public class LimitService {
         User user = userRepository.findByEmail(email) //
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
+        // --- 1. (NEW) TIER SELECTION CHECK (RUNS FIRST) ---
+        if (!user.getHasSelectedTier()) {
+            // Return 403 Forbidden. This tells the frontend something is
+            // wrong, and it should redirect to the selection page.
+            return new LimitCheckResponse(false, "TIER_NOT_SELECTED", 403); 
+        }
+        // ---------------------------------------------------
+
+        // --- 2. (Existing) PRO TIER CHECK ---
+        if (user.getAccountTier() == AccountTier.PRO) {
+            return new LimitCheckResponse(true, "ALLOWED_PRO", 200);
+        }
+
+        // --- 3. (Existing) FREE TIER LOGIC ---
+        // (This code now only runs for FREE users who have
+        // already selected their tier)
+
         LocalDate today = LocalDate.now();
 
         // 2. Check if 14-day trial is expired

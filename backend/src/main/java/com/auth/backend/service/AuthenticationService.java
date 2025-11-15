@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 
 import com.auth.backend.dto.AuthenticationRequest;
 import com.auth.backend.dto.RegisterRequest;
+import com.auth.backend.dto.RegisterResponse;
+import com.auth.backend.enums.AccountTier;
 import com.auth.backend.enums.AuthProvider;
 import com.auth.backend.enums.Role;
 import com.auth.backend.model.User;
@@ -66,6 +68,8 @@ public class AuthenticationService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
+                .accountTier(AccountTier.FREE) // Set default tier
+                .hasSelectedTier(false)
                 .authProvider(AuthProvider.LOCAL) // Mark as local account
                 .enabled(false) // User is disabled until verified
                 .verificationCode(verificationCode)
@@ -82,7 +86,7 @@ public class AuthenticationService {
      * Authenticates a user with email/password.
      * Checks if the user is enabled before issuing cookies.
      */
-    public void authenticate(AuthenticationRequest request, HttpServletResponse response) {
+    public AuthenticationResponse authenticate(AuthenticationRequest request, HttpServletResponse response) {
         // This will throw AuthenticationException if credentials are bad
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -93,12 +97,11 @@ public class AuthenticationService {
 
         // Credentials are valid, now get the user
         var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("User not found after authentication")); // Should not happen
+                .orElseThrow(() -> new UsernameNotFoundException("User not found after authentication")); // 3. Use specific exception
 
         // Check if the user has verified their email
         if (!user.isEnabled()) {
             log.warn("Authentication failed for user '{}': Account is not verified.", request.getEmail());
-            // We throw this specific exception, which the controller handler can catch
             throw new IllegalStateException("Account is not verified. Please check your email for a verification code.");
         }
 
@@ -106,8 +109,16 @@ public class AuthenticationService {
         var jwtToken = jwtService.generateToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
 
+        // --- YOUR COOKIE LOGIC (This is correct) ---
+        // Make sure jwtExpirationMs and refreshExpirationMs are defined in this class
         addTokenCookie("access_token", jwtToken, Duration.ofMillis(jwtExpirationMs), response);
         addTokenCookie("refresh_token", refreshToken, Duration.ofMillis(refreshExpirationMs), response);
+
+        // --- 4. THE CRITICAL FIX ---
+        // Return the DTO with *only* the flag, as you wanted.
+        return AuthenticationResponse.builder()
+                .hasSelectedTier(user.getHasSelectedTier())
+                .build();
     }
 
     /**

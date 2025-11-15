@@ -48,14 +48,17 @@ public class AuthenticationController {
     }
 
     @PostMapping("/authenticate")
-    public ResponseEntity<String> authenticate(
+    public ResponseEntity<AuthenticationResponse> authenticate( 
             @RequestBody AuthenticationRequest request,
             HttpServletResponse response
     ) {
         log.info("Authenticate endpoint hit for email: {}", request.getEmail());
-        authenticationService.authenticate(request, response); // Pass response to service to set cookies
+        
+        AuthenticationResponse authResponse = authenticationService.authenticate(request, response);
+        
         log.info("Authentication successful for email: {}", request.getEmail());
-        return ResponseEntity.ok("Authentication successful");
+        
+        return ResponseEntity.ok(authResponse);
     }
 
     // --- NEW: ACCOUNT VERIFICATION ENDPOINT ---

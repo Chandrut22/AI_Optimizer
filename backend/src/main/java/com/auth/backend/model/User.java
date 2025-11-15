@@ -1,6 +1,7 @@
 package com.auth.backend.model;
 
 import com.auth.backend.dto.UserResponse;
+import com.auth.backend.enums.AccountTier;
 import com.auth.backend.enums.AuthProvider;
 import com.auth.backend.enums.Role;
 import jakarta.persistence.*;
@@ -75,6 +76,13 @@ public class User implements UserDetails {
     // Tracks the number of requests made today
     @Column(name = "daily_request_count", nullable = false, columnDefinition = "integer default 0")
     private int dailyRequestCount = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "VARCHAR(50) DEFAULT 'FREE'")
+    private AccountTier accountTier = AccountTier.FREE;
+
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
+    private boolean hasSelectedTier = false;
 
     // --- Lifecycle Callbacks ---
 
