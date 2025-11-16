@@ -19,6 +19,8 @@ import UserManagement from './pages/admin/UserManagement.jsx';
 import Analytics from './pages/admin/Analytics.jsx';
 import Settings from './pages/admin/Settings.jsx';
 import SeoResultsPage from './pages/SeoResultsPage.jsx';
+import Features from './pages/Features.jsx';
+import Pricing from './pages/Pricing.jsx';
 
 const queryClient = new QueryClient();
 
@@ -33,6 +35,8 @@ const App = () => {
                             <Route path='/' element={<Homepage />} />
                             <Route path='/login' element={<LoginPage />} />
                             <Route path='/register' element={<RegisterPage />} />
+                            <Route path='/features' element={<Features />} />
+                            <Route path='/pricing' element={<Pricing />} />
                             <Route path='/verify-email' element={<EmailVerificationPage />} />
                             <Route path='/forgot-password' element={<ForgotPasswordPage />} />
                             <Route path='/reset-password' element={<ResetPasswordPage />}/>
