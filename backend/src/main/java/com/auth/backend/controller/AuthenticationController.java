@@ -1,5 +1,7 @@
 package com.auth.backend.controller;
 
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -19,7 +21,6 @@ import com.auth.backend.dto.RegisterRequest;
 import com.auth.backend.dto.ResetPasswordRequest;
 import com.auth.backend.dto.VerificationRequest;
 import com.auth.backend.service.AuthenticationService;
-import com.auth.backend.dto.AuthenticationResponse;
 
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.Cookie;
@@ -49,17 +50,17 @@ public class AuthenticationController {
     }
 
     @PostMapping("/authenticate")
-    public ResponseEntity<AuthenticationResponse> authenticate( 
+    public ResponseEntity<?> authenticate( 
             @RequestBody AuthenticationRequest request,
             HttpServletResponse response
     ) {
         log.info("Authenticate endpoint hit for email: {}", request.getEmail());
         
-        AuthenticationResponse authResponse = authenticationService.authenticate(request, response);
+        authenticationService.authenticate(request, response);
         
         log.info("Authentication successful for email: {}", request.getEmail());
         
-        return ResponseEntity.ok(authResponse);
+        return ResponseEntity.ok(Map.of("message", "Authentication successful"));
     }
 
     // --- NEW: ACCOUNT VERIFICATION ENDPOINT ---

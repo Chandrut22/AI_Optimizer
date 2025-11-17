@@ -16,7 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.auth.backend.dto.AuthenticationRequest;
-import com.auth.backend.dto.AuthenticationResponse;
 import com.auth.backend.dto.RegisterRequest;
 import com.auth.backend.enums.AccountTier;
 import com.auth.backend.enums.AuthProvider;
@@ -86,7 +85,7 @@ public class AuthenticationService {
      * Authenticates a user with email/password.
      * Checks if the user is enabled before issuing cookies.
      */
-    public AuthenticationResponse authenticate(AuthenticationRequest request, HttpServletResponse response) {
+    public void authenticate(AuthenticationRequest request, HttpServletResponse response) {
         // This will throw AuthenticationException if credentials are bad
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -114,11 +113,7 @@ public class AuthenticationService {
         addTokenCookie("access_token", jwtToken, Duration.ofMillis(jwtExpirationMs), response);
         addTokenCookie("refresh_token", refreshToken, Duration.ofMillis(refreshExpirationMs), response);
 
-        // --- 4. THE CRITICAL FIX ---
-        // Return the DTO with *only* the flag, as you wanted.
-        return AuthenticationResponse.builder()
-                .hasSelectedTier(user.isHasSelectedTier())
-                .build();
+        
     }
 
     /**
