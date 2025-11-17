@@ -6,7 +6,7 @@ from app.auth.dependencies import (
     save_scan_history_async
 )
 from app.auth.models import UserClaims
-from agent.main import MainAgent  # <-- Import the MainAgent class
+from app.agent.main import MainAgent  # <-- Import the MainAgent class
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
