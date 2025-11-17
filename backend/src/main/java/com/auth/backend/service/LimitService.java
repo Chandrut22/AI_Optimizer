@@ -20,7 +20,7 @@ public class LimitService {
 
     private final UserRepository userRepository;
 
-    // --- NEW: Nested class for detailed usage stats ---
+    // --- DTO for Usage Details (Used by both responses) ---
     @Getter
     public static class UsageDetails {
         private final Object dailyCount; // Use Object for "N/A"
@@ -44,22 +44,20 @@ public class LimitService {
         }
     }
 
-    /**
-     * A simple helper class to return the result of the limit check.
-     */
-    @Getter // Lombok annotation to auto-generate getters
+    // --- 1. DTO for Check & Increment (Existing) ---
+    @Getter 
     public static class LimitCheckResponse {
         private final boolean allowed;
         private final String reason;
         private final int httpStatus;
-        private final UsageDetails usage; // <-- NEW FIELD
+        private final UsageDetails usage; // Can be null
 
         // Constructor for DENIED responses
         public LimitCheckResponse(boolean allowed, String reason, int httpStatus) {
             this.allowed = allowed;
             this.reason = reason;
             this.httpStatus = httpStatus;
-            this.usage = null; // No usage details if not allowed
+            this.usage = null; 
         }
 
         // Constructor for ALLOWED responses
@@ -71,50 +69,110 @@ public class LimitService {
         }
     }
 
+    // --- 2. NEW DTO for Read-Only Status Check ---
+    @Getter
+    public static class UsageStatusResponse {
+        private final boolean hasSelectedTier;
+        private final AccountTier accountTier;
+        private final UsageDetails usage; // Can be null if tier not selected
+        private final String trialStatus; // e.g., "ACTIVE", "EXPIRED", "N/A"
+
+        public UsageStatusResponse(User user, UsageDetails usage, String trialStatus) {
+            this.hasSelectedTier = user.isHasSelectedTier();
+            this.accountTier = user.getAccountTier();
+            this.usage = usage;
+            this.trialStatus = trialStatus;
+        }
+        
+        // Special constructor for user who hasn't selected tier
+        public UsageStatusResponse(User user) {
+            this.hasSelectedTier = user.isHasSelectedTier();
+            this.accountTier = user.getAccountTier();
+            this.usage = null;
+            this.trialStatus = "N/A";
+        }
+    }
+
+
+    /**
+     * [ACTION 1: WRITE]
+     * Checks if a user is allowed, and if so, INCREMENTS their count.
+     * This is for the FastAPI agent.
+     */
     @Transactional
     public LimitCheckResponse checkAndIncrementLimitByEmail(String email) {
         
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
-        // 1. TIER SELECTION CHECK (No change)
         if (!user.isHasSelectedTier()) {
             return new LimitCheckResponse(false, "TIER_NOT_SELECTED", 403); 
         }
 
-        // 2. PRO TIER CHECK (Enhancement)
         if (user.getAccountTier() == AccountTier.PRO) {
-            // Return ALLOWED with PRO usage details
             return new LimitCheckResponse(true, "ALLOWED_PRO", 200, UsageDetails.pro());
         }
 
-        // 3. FREE TIER LOGIC
+        // --- FREE TIER LOGIC ---
         LocalDate today = LocalDate.now();
         LocalDateTime trialEndDate = user.getCreatedAt().plusDays(14);
 
-        // Check if 14-day trial is expired
         if (LocalDateTime.now().isAfter(trialEndDate)) {
             return new LimitCheckResponse(false, "TRIAL_EXPIRED", 402);
         }
 
-        // Check if it's a new day. If so, reset the counter.
         if (user.getLastRequestDate() == null || !user.getLastRequestDate().isEqual(today)) {
             user.setDailyRequestCount(0);
             user.setLastRequestDate(today);
         }
 
-        // Check if daily limit is reached
         if (user.getDailyRequestCount() >= 10) {
             return new LimitCheckResponse(false, "DAILY_LIMIT_REACHED", 429);
         }
 
-        // 5. All checks passed. Increment and allow.
+        // This is the "WRITE" part of the operation
         user.setDailyRequestCount(user.getDailyRequestCount() + 1);
         userRepository.save(user);
 
-        // --- ENHANCED RESPONSE ---
-        // Return ALLOWED with FREE usage details
         UsageDetails usage = UsageDetails.free(user.getDailyRequestCount(), trialEndDate);
         return new LimitCheckResponse(true, "ALLOWED", 200, usage);
+    }
+
+    /**
+     * [ACTION 2: READ]
+     * Gets the user's current usage status WITHOUT incrementing the count.
+     * This is for the frontend dashboard.
+     */
+    @Transactional // Use Transactional to safely save the daily reset
+    public UsageStatusResponse getUserUsageStatus(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        // 1. If tier not selected, return basic info
+        if (!user.isHasSelectedTier()) {
+            return new UsageStatusResponse(user);
+        }
+
+        // 2. If PRO, return PRO details
+        if (user.getAccountTier() == AccountTier.PRO) {
+            return new UsageStatusResponse(user, UsageDetails.pro(), "N/A");
+        }
+
+        // 3. If FREE, get full details
+        // This is a good place to reset the counter for the dashboard
+        // *before* they make their first request of the day.
+        LocalDate today = LocalDate.now();
+        if (user.getLastRequestDate() == null || !user.getLastRequestDate().isEqual(today)) {
+            user.setDailyRequestCount(0);
+            user.setLastRequestDate(today);
+            userRepository.save(user); // Save the reset
+        }
+
+        LocalDateTime trialEndDate = user.getCreatedAt().plusDays(14);
+        UsageDetails usage = UsageDetails.free(user.getDailyRequestCount(), trialEndDate);
+        
+        String trialStatus = LocalDateTime.now().isAfter(trialEndDate) ? "EXPIRED" : "ACTIVE";
+
+        return new UsageStatusResponse(user, usage, trialStatus);
     }
 }
