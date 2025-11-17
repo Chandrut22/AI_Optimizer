@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.auth.backend.enums.AccountTier;
 import com.auth.backend.model.User;
-import com.auth.backend.repository.UserRepository;
+import com.auth.backend.repository.UserRepository; // Import AccountTier
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,31 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class LimitService {
 
-    private final UserRepository userRepository; //
+    private final UserRepository userRepository;
+
+    // --- NEW: Nested class for detailed usage stats ---
+    @Getter
+    public static class UsageDetails {
+        private final Object dailyCount; // Use Object for "N/A"
+        private final Object dailyMax;   // Use Object for "UNLIMITED"
+        private final Object trialEndDate; // Use Object for "N/A"
+
+        public UsageDetails(Object dailyCount, Object dailyMax, Object trialEndDate) {
+            this.dailyCount = dailyCount;
+            this.dailyMax = dailyMax;
+            this.trialEndDate = trialEndDate;
+        }
+
+        // Static factory for a PRO user
+        public static UsageDetails pro() {
+            return new UsageDetails("N/A", "UNLIMITED", "N/A");
+        }
+        
+        // Static factory for a FREE user
+        public static UsageDetails free(int dailyCount, LocalDateTime trialEndDate) {
+            return new UsageDetails(dailyCount, 10, trialEndDate.toLocalDate().toString());
+        }
+    }
 
     /**
      * A simple helper class to return the result of the limit check.
@@ -28,71 +52,69 @@ public class LimitService {
         private final boolean allowed;
         private final String reason;
         private final int httpStatus;
+        private final UsageDetails usage; // <-- NEW FIELD
 
+        // Constructor for DENIED responses
         public LimitCheckResponse(boolean allowed, String reason, int httpStatus) {
             this.allowed = allowed;
             this.reason = reason;
             this.httpStatus = httpStatus;
+            this.usage = null; // No usage details if not allowed
+        }
+
+        // Constructor for ALLOWED responses
+        public LimitCheckResponse(boolean allowed, String reason, int httpStatus, UsageDetails usage) {
+            this.allowed = allowed;
+            this.reason = reason;
+            this.httpStatus = httpStatus;
+            this.usage = usage;
         }
     }
 
-    /**
-     * Checks if a user is allowed to make a request based on their trial status and daily limits.
-     * If allowed, it increments their daily count. This entire operation is atomic.
-     *
-     * @param email The email of the user to check (from JWT 'sub' claim).
-     * @return A LimitCheckResponse object with the result.
-     */
-    @Transactional // This is CRITICAL. It ensures data consistency.
+    @Transactional
     public LimitCheckResponse checkAndIncrementLimitByEmail(String email) {
         
-        // 1. Find the user by their email
-        User user = userRepository.findByEmail(email) //
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
-        // --- 1. (NEW) TIER SELECTION CHECK (RUNS FIRST) ---
+        // 1. TIER SELECTION CHECK (No change)
         if (!user.isHasSelectedTier()) {
-            // Return 403 Forbidden. This tells the frontend something is
-            // wrong, and it should redirect to the selection page.
             return new LimitCheckResponse(false, "TIER_NOT_SELECTED", 403); 
         }
-        // ---------------------------------------------------
 
-        // --- 2. (Existing) PRO TIER CHECK ---
+        // 2. PRO TIER CHECK (Enhancement)
         if (user.getAccountTier() == AccountTier.PRO) {
-            return new LimitCheckResponse(true, "ALLOWED_PRO", 200);
+            // Return ALLOWED with PRO usage details
+            return new LimitCheckResponse(true, "ALLOWED_PRO", 200, UsageDetails.pro());
         }
 
-        // --- 3. (Existing) FREE TIER LOGIC ---
-        // (This code now only runs for FREE users who have
-        // already selected their tier)
-
+        // 3. FREE TIER LOGIC
         LocalDate today = LocalDate.now();
-
-        // 2. Check if 14-day trial is expired
-        // We use the User's createdAt field for this
         LocalDateTime trialEndDate = user.getCreatedAt().plusDays(14);
+
+        // Check if 14-day trial is expired
         if (LocalDateTime.now().isAfter(trialEndDate)) {
-            // Return 402 Payment Required
             return new LimitCheckResponse(false, "TRIAL_EXPIRED", 402);
         }
 
-        // 3. Check if it's a new day. If so, reset the counter.
+        // Check if it's a new day. If so, reset the counter.
         if (user.getLastRequestDate() == null || !user.getLastRequestDate().isEqual(today)) {
             user.setDailyRequestCount(0);
             user.setLastRequestDate(today);
         }
 
-        // 4. Check if daily limit is reached
+        // Check if daily limit is reached
         if (user.getDailyRequestCount() >= 10) {
-            // Return 429 Too Many Requests
             return new LimitCheckResponse(false, "DAILY_LIMIT_REACHED", 429);
         }
 
         // 5. All checks passed. Increment and allow.
-        user.setDailyRequestCount(user.getDailyRequestCount() + 1); //
-        userRepository.save(user); // The @Transactional will handle the commit
+        user.setDailyRequestCount(user.getDailyRequestCount() + 1);
+        userRepository.save(user);
 
-        return new LimitCheckResponse(true, "ALLOWED", 200);
+        // --- ENHANCED RESPONSE ---
+        // Return ALLOWED with FREE usage details
+        UsageDetails usage = UsageDetails.free(user.getDailyRequestCount(), trialEndDate);
+        return new LimitCheckResponse(true, "ALLOWED", 200, usage);
     }
 }

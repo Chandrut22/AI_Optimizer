@@ -1,6 +1,7 @@
 package com.auth.backend.controller;
 
-import java.util.Map; //
+import java.util.HashMap;
+import java.util.Map; // Import HashMap
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -14,19 +15,12 @@ import com.auth.backend.service.LimitService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-// --- 1. CHANGE THIS LINE ---
-@RequestMapping("/api/v1/usage") // <-- Renamed from /internal
+@RequestMapping("/api/v1/usage")
 @RequiredArgsConstructor
-// --- (Optional) Rename class to UsageController ---
 public class InternalController { 
 
     private final LimitService limitService;
 
-    /**
-     * Internal endpoint for the FastAPI agent to check usage limits.
-     * It gets the user's email from the forwarded JWT.
-     */
-    // --- 2. THIS URL IS NOW /api/v1/usage/check-limit ---
     @PostMapping("/check-limit") 
     public ResponseEntity<?> checkUserLimit(Authentication authentication) { 
         
@@ -34,13 +28,24 @@ public class InternalController {
              return ResponseEntity.status(401)
                     .body(Map.of("allowed", false, "reason", "UNAUTHENTICATED"));
         }
-        String email = authentication.getName(); // This is the user's email
+        String email = authentication.getName();
 
         try {
             LimitService.LimitCheckResponse response = limitService.checkAndIncrementLimitByEmail(email); 
 
-            return ResponseEntity.status(response.getHttpStatus())
-                    .body(Map.of("allowed", response.isAllowed(), "reason", response.getReason()));
+            // --- THIS IS THE NEW LOGIC ---
+            
+            // Build the response body
+            Map<String, Object> body = new HashMap<>();
+            body.put("allowed", response.isAllowed());
+            body.put("reason", response.getReason());
+
+            // If the request was allowed, add the detailed usage object
+            if (response.isAllowed() && response.getUsage() != null) {
+                body.put("usage", response.getUsage());
+            }
+
+            return ResponseEntity.status(response.getHttpStatus()).body(body);
                     
         } catch (UsernameNotFoundException e) {
             return ResponseEntity.status(404)
