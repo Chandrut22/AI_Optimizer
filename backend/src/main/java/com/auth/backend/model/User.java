@@ -3,15 +3,18 @@ package com.auth.backend.model;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set; // <-- Add this
+
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;   // <-- ADD @Getter
+import org.springframework.security.core.userdetails.UserDetails;
 
 import com.auth.backend.dto.UserResponse;
-import com.auth.backend.enums.AccountTier;   // <-- ADD @Setter
+import com.auth.backend.enums.AccountTier;
 import com.auth.backend.enums.AuthProvider;
 import com.auth.backend.enums.Role;
 
@@ -23,6 +26,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,8 +35,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Getter // ADD this
-@Setter // ADD this
+@Getter 
+@Setter 
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -57,13 +62,13 @@ public class User implements UserDetails {
     private String password;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    @Builder.Default // <-- ADD this to fix build warning
+    @Column(nullable = false) // Removed 'columnDefinition'
+    @Builder.Default
     private Role role = Role.USER;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    @Builder.Default // <-- ADD this to fix build warning
+    @Column(nullable = false) // Removed 'columnDefinition'
+    @Builder.Default
     private AuthProvider authProvider = AuthProvider.LOCAL;
 
     @CreationTimestamp
@@ -72,10 +77,8 @@ public class User implements UserDetails {
 
     // --- Verification & Reset Fields ---
 
-    // Note: @Getter on the class will create isEnabled(),
-    // which correctly matches the method signature for UserDetails.
-    @Column(columnDefinition = "boolean default false")
-    @Builder.Default // <-- ADD this to fix build warning
+    @Column(nullable = false) // Removed 'columnDefinition'
+    @Builder.Default
     private boolean enabled = false;
 
     private String verificationCode;
@@ -87,18 +90,22 @@ public class User implements UserDetails {
     @Column(name = "last_request_date")
     private LocalDate lastRequestDate;
 
-    @Column(name = "daily_request_count", nullable = false, columnDefinition = "integer default 0")
-    @Builder.Default // <-- ADD this to fix build warning
+    @Column(name = "daily_request_count", nullable = false) // Removed 'columnDefinition'
+    @Builder.Default
     private int dailyRequestCount = 0;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "VARCHAR(50) DEFAULT 'FREE'")
-    @Builder.Default // <-- ADD this to fix build warning
+    @Column(nullable = false) // Removed 'columnDefinition'
+    @Builder.Default
     private AccountTier accountTier = AccountTier.FREE;
 
-    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
-    @Builder.Default // <-- ADD this to fix build warning
+    @Column(nullable = false) // Removed 'columnDefinition'
+    @Builder.Default
     private boolean hasSelectedTier = false;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<ScanHistory> scanHistories = new HashSet<>();
     
     
     // --- UserDetails Implementation ---
