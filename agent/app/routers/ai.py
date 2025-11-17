@@ -1,106 +1,77 @@
-import httpx 
-from fastapi import APIRouter, Depends, status, HTTPException, Request # <-- Make sure Request is imported
-from pydantic import BaseModel, Field
-from app.auth.dependencies import get_current_activation_user
-from app.auth.models import UserClaims
-from app.core.config import settings # <-- Make sure settings are imported
 import logging
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from app.auth.dependencies import (
+    get_current_activation_user, 
+    check_spring_boot_limit, 
+    save_scan_history_async
+)
+from app.auth.models import UserClaims
+from agent.main import MainAgent  # <-- Import the MainAgent class
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
 
+# --- Pydantic Models for this endpoint ---
 
-class QuestionRequest(BaseModel):
-    question: str = Field(..., description="The question text to ask")
+class SeoAnalysisRequest(BaseModel):
+    url: str = Field(..., description="The website URL to analyze")
 
-
-class AnswerResponse(BaseModel):
-    message: str = Field(..., description="Response status message")
-    user_id: str = Field(..., description="User id from token `sub`")
-    answer: str = Field(..., description="Generated answer for the question")
-
+# The response will be a complex JSON report from the agent,
+# so we use a generic 'dict' as the response model.
+# We will also add our 'usage_details' to it.
 
 @router.post(
-    "/ai/ask",
-    response_model=AnswerResponse,
+    "/agent/run-seo-analysis",
+    response_model=dict,
     status_code=status.HTTP_200_OK,
-    summary="Ask a question with access token validation",
+    summary="Runs the full multi-agent SEO analysis",
 )
-def ask_question(
-    request: QuestionRequest,
-    fastapi_request: Request, # <-- Inject the Request object
+async def run_seo_analysis(
+    req: SeoAnalysisRequest,
+    fastapi_request: Request,
+    
+    # --- Dependencies handle all auth and limit checking ---
     user: UserClaims = Depends(get_current_activation_user),
-) -> AnswerResponse:
+    usage_data: dict = Depends(check_spring_boot_limit),
+):
     """
-    Validates access token, then checks usage limit with the backend,
-    then processes the question and returns an answer.
+    This is the main endpoint to run a full SEO scan.
+    
+    1. Validates the user's token.
+    2. Checks and increments the user's usage limit on the Spring Boot backend.
+    3. Saves the scan URL to the user's history.
+    4. Runs the full asynchronous multi-agent AI analysis.
+    5. Returns the complete SEO report.
     """
-
-    logger.info("User %s asking: %s. Checking limits...", user.sub, request.question)
-
-    # --- 1. THIS IS THE NEW, CORRECT URL ---
-    # It points to /api/v1/usage/check-limit
-    check_url = f"{settings.SPRING_BOOT_INTERNAL_URL}/api/v1/usage/check-limit"
     
-    # --- 2. Get the user's token from the incoming request ---
-    auth_header = fastapi_request.headers.get("Authorization")
-    
-    if not auth_header:
-        # This is a fallback; get_current_activation_user should catch it first.
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Missing Authorization header"
-        )
+    logger.info(f"User {user.sub} passed limit check. Reason: {usage_data.get('reason')}")
 
-    # --- 3. Prepare the header to forward to Spring Boot ---
-    headers = {"Authorization": auth_header}
+    # --- 1. Save to History (Fire and Forget) ---
+    # We run this in the background (no 'await') so it doesn't block the AI
+    await save_scan_history_async(fastapi_request, req.url)
 
+    # --- 2. Run the Main AI Agent ---
     try:
-        with httpx.Client() as client:
-            # --- 4. Send the request with the user's forwarded token ---
-            response = client.post(check_url, headers=headers)
-
-        # Check if the backend denied the request
-        if response.status_code != 200:
-            if response.status_code == 402: # Trial Expired
-                raise HTTPException(
-                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                    detail="Your 14-day free trial has expired."
-                )
-            elif response.status_code == 429: # Daily Limit
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail="You have exceeded your daily limit of 10 AI requests."
-                )
-            # 401 (token invalid) or 403 (token valid, but forbidden)
-            elif response.status_code == 401 or response.status_code == 403:
-                logger.warning("Token forwarding failed. Spring Boot rejected the token.")
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid credentials."
-                )
-            else: # Other error
-                logger.error("Spring Boot returned an unexpected status: %s", response.status_code)
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=response.json().get("reason", "An error occurred with your account.")
-                )
-
-    except httpx.RequestError as e:
-        logger.error("Failed to connect to Spring Boot limit service: %s", e)
+        logger.info(f"Starting main agent for {req.url}...")
+        
+        # Initialize MainAgent with the URL from the request
+        main_agent = MainAgent(req.url)
+        
+        # Run the full async pipeline
+        result_report = await main_agent.run() 
+        
+        logger.info(f"Main agent finished for {req.url}.")
+        
+        # --- 3. Return the full report ---
+        # Add the usage data to the final report for the frontend
+        result_report["usage_details"] = usage_data.get("usage")
+        return result_report
+        
+    except Exception as e:
+        # Log the error and return a 500
+        logger.error(f"Main agent failed for {req.url}: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Service is temporarily unavailable. Please try again later."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred during the AI analysis: {str(e)}"
         )
-
-    # --- If check passes, run the AI logic ---
-    logger.info("User %s allowed. Processing question...", user.sub)
-
-    answer_text = f"Echo: {request.question}"
-
-    return AnswerResponse(
-        message="Question answered successfully",
-        user_id=user.sub,
-        answer=answer_text,
-    )
