@@ -2,7 +2,7 @@ import json
 import os
 import asyncio
 from dotenv import load_dotenv
-from tools import (
+from app.agent.tools import (
     CrawlWebsiteTool, OnPageAnalysisTool, MarketResearchTool, 
     TechnicalAuditTool, StrategyGeneratorTool, OptimizationApplierTool,
     ReportGeneratorTool

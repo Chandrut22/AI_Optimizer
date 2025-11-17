@@ -5,13 +5,13 @@ from pydantic import BaseModel, Field
 from typing import Type, Any
 
 # Import all sub-agent classes
-from sub_agents.crawler import WebCrawler
-from sub_agents.onpage import OnPageAnalyzer
-from sub_agents.research import MarketResearcher
-from sub_agents.technical import TechnicalAuditor
-from sub_agents.strategist import SeoStrategist
-from sub_agents.optimizer import SeoOptimizer
-from sub_agents.reporter import ReportGenerator
+from app.agent.sub_agents.crawler import WebCrawler
+from app.agent.sub_agents.onpage import OnPageAnalyzer
+from app.agent.sub_agents.research import MarketResearcher
+from app.agent.sub_agents.technical import TechnicalAuditor
+from app.agent.sub_agents.strategist import SeoStrategist
+from app.agent.sub_agents.optimizer import SeoOptimizer
+from app.agent.sub_agents.reporter import ReportGenerator
 
 # --- Crawl Tool ---
 class CrawlInput(BaseModel):
