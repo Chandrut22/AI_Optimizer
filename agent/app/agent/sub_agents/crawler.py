@@ -4,8 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from playwright.async_api import async_playwright
 # Import Playwright's specific error types
-from playwright._impl._api_types import TimeoutError as PlaywrightTimeoutError
-from playwright._impl._api_types import Error as PlaywrightError
+from playwright.async_api import Error as PlaywrightError, TimeoutError as PlaywrightTimeoutError
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +80,6 @@ class WebCrawler:
         except PlaywrightTimeoutError:
             logger.warning(f"Playwright timed out crawling {url}")
             return CrawlResult(url=url, status_code=408, error_message=f"Request timed out after {self.timeout_ms / 1000}s.")
-        
         except PlaywrightError as e:
             # Catches other browser-level errors
             logger.error(f"Playwright browser error for {url}: {e}")
