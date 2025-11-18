@@ -16,8 +16,7 @@ class CrawlResult(BaseModel):
     extracted_text: Optional[str] = None
     error_message: Optional[str] = None
 
-
-class FirecrawlCrawler:
+class WebCrawler:
     def __init__(self, api_key: Optional[str] = None):
         # Use provided api_key or fallback to environment variable
         if api_key is None:
