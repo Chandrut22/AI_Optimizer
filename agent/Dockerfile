@@ -1,13 +1,18 @@
 # -----------------------------
 # Stage 1: Base image
 # -----------------------------
-FROM python:3.10-slim-buster
+#
+# --- THIS IS THE FIX ---
+# Change from "buster" to "bookworm" (Debian 12)
+# This is a newer, fully supported Python base image.
+FROM python:3.10-slim-bookworm
+# --- END FIX ---
 
 # Prevent Python from writing .pyc files & enable unbuffered logs
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# --- 1. (NEW) Install system dependencies for Playwright ---
+# --- Install system dependencies for Playwright ---
 # These are required for the headless browser to run
 RUN apt-get update && apt-get install -y \
     libnss3 \
@@ -26,6 +31,7 @@ RUN apt-get update && apt-get install -y \
     libgbm1 \
     libxshmfence1 \
     libasound2 \
+    # Clean up apt cache
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -38,15 +44,19 @@ RUN pip install --no-cache-dir --upgrade pip uv
 # -----------------------------
 # Copy dependency files
 # -----------------------------
+# Copy both files. uv.lock ensures reproducible builds.
 COPY pyproject.toml uv.lock ./
 
 # -----------------------------
 # Install dependencies
 # -----------------------------
-# Use uv pip install based on pyproject.toml
+# Use uv to install from pyproject.toml
 RUN uv pip install --system --no-cache-dir -r pyproject.toml
 
-# --- 2. (NEW) Install the browser binaries ---
+# -----------------------------
+# Install the browser binaries
+# -----------------------------
+# This command must come *after* playwright is installed via uv
 RUN playwright install chromium
 
 # -----------------------------
@@ -60,7 +70,7 @@ RUN mkdir -p /app/logs && chown -R root:root /app/logs
 # -----------------------------
 # Expose port
 # -----------------------------
-# Use $PORT which is standard for Render/Koyeb, default to 8000
+# Default to 8000, but allow $PORT to override (for Render/Koyeb)
 EXPOSE 8000
 
 # -----------------------------
