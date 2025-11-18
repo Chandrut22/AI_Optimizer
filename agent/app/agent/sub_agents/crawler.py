@@ -1,12 +1,13 @@
 import asyncio
 import os
 import logging
-from firecrawl import AsyncFirecrawl  # <-- 1. Changed from AsyncFirecrawlApp
+from firecrawl import AsyncFirecrawl
+from firecrawl.v2.types import Document  # <-- Import the 'Document' type
 from pydantic import BaseModel, Field
 from typing import Optional
 from dotenv import load_dotenv
 
-# Load environment variables from .env file (optional, good for local dev)
+# Load environment variables from .env file
 load_dotenv()
 
 # Configure logging
@@ -34,14 +35,6 @@ class WebCrawler:
     def __init__(self, api_key: Optional[str] = None):
         """
         Initializes the asynchronous Firecrawl client.
-
-        Args:
-            api_key: The Firecrawl API key. If None, it will be
-                     fetched from the "FIRECRAWL_API_KEY" environment variable.
-        
-        Raises:
-            ValueError: If the API key is not provided and not found
-                        in the environment variables.
         """
         if api_key is None:
             api_key = os.getenv("FIRECRAWL_API_KEY")
@@ -50,7 +43,6 @@ class WebCrawler:
             logger.error("FIRECRAWL_API_KEY not found in environment variables or parameters")
             raise ValueError("FIRECRAWL_API_KEY not found in environment variables or parameters")
         
-        # 2. Use the AsyncFirecrawl class from the new docs
         self.client = AsyncFirecrawl(api_key=api_key)
         logger.info("WebCrawler (AsyncFirecrawl) initialized successfully.")
 
@@ -66,8 +58,6 @@ class WebCrawler:
         """
         logger.debug(f"Attempting to fetch page: {url}")
         try:
-            # 3. Use the .scrape() method
-            # 4. Pass 'formats' as a direct keyword argument
             response = await self.client.scrape(
                 url,
                 formats=["html", "markdown"]
@@ -75,16 +65,20 @@ class WebCrawler:
             
             logger.info(f"Successfully scraped URL: {url}")
             
-            if isinstance(response, dict):
+            # --- FIX ---
+            # The response is a 'Document' object, not a 'dict'.
+            # We check its type and then access its attributes.
+            if isinstance(response, Document):
                 return CrawlResult(
                     url=url,
                     status_code=200,
-                    # The response keys are 'html' and 'markdown'
-                    html_content=response.get("html"),
-                    extracted_text=response.get("markdown"),
+                    html_content=response.html,        # Access .html attribute
+                    extracted_text=response.markdown, # Access .markdown attribute
                     error_message=None
                 )
+            # --- END FIX ---
             else:
+                # Fallback in case the response is something else unexpected
                 logger.warning(f"Unexpected response format from Firecrawl for {url}: {type(response)}")
                 return CrawlResult(
                     url=url,
@@ -93,12 +87,10 @@ class WebCrawler:
                 )
 
         except Exception as e:
+            # Log the full exception for debugging
             logger.error(f"Failed to fetch or scrape {url}: {e}", exc_info=True)
             return CrawlResult(
                 url=url,
                 status_code=500,
                 error_message=str(e)
             )
-
-# This file is a module, so the if __name__ == "__main__": block
-# is correctly removed for production code.
