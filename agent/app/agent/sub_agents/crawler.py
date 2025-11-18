@@ -1,7 +1,13 @@
 import asyncio
-import aiohttp
+import logging
 from pydantic import BaseModel, Field
 from typing import Optional
+from playwright.async_api import async_playwright
+# Import Playwright's specific error types
+from playwright._impl._api_types import TimeoutError as PlaywrightTimeoutError
+from playwright._impl._api_types import Error as PlaywrightError
+
+logger = logging.getLogger(__name__)
 
 class CrawlResult(BaseModel):
     """A data model for storing the result of a crawl."""
@@ -12,84 +18,85 @@ class CrawlResult(BaseModel):
 
 class WebCrawler:
     """
-    A scalable and robust asynchronous web crawler.
+    A robust asynchronous web crawler using a headless browser (Playwright)
+    to render JavaScript and bypass simple bot detection.
     """
-    def __init__(self, timeout: int = 10):
-        
-        # --- PROPER CODE FIX 1 ---
-        # Change the User-Agent to mimic Googlebot.
-        # Servers (like Vercel) are very likely to rate-limit
-        # standard python/browser user-agents, causing 429 errors.
-        # They are much less likely to block Googlebot.
-        self._headers = {
-            "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-        }
-        # --- END FIX ---
-        
-        self._timeout = aiohttp.ClientTimeout(total=timeout)
+    def __init__(self, timeout: int = 20): # Increased default timeout to 20s
+        self.timeout_ms = timeout * 1000
+        # Use a real browser user-agent
+        self._user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 
     async def fetch_page(self, url: str) -> CrawlResult:
         """
-        Asynchronously fetches a single webpage.
-
-        Args:
-            url: The URL of the page to fetch.
-
-        Returns:
-            A CrawlResult object with the page's data or an error message.
+        Asynchronously fetches a single webpage using a real browser.
         """
         
-        # This is correct for your setup to avoid SSL verification errors
-        connector = aiohttp.TCPConnector(ssl=False)
-
+        browser = None
+        context = None
+        page = None
+        
         try:
-            # Pass the connector to the ClientSession
-            async with aiohttp.ClientSession(
-                headers=self._headers,
-                timeout=self._timeout,
-                connector=connector
-            ) as session:
+            async with async_playwright() as p:
+                # Launch a new headless browser instance
+                # Note: --no-sandbox is often required in Docker containers
+                browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
                 
-                async with session.get(url) as response:
-                    
-                    status_code = response.status
-                    
-                    # --- PROPER CODE FIX 2 ---
-                    # Remove response.raise_for_status() and handle errors manually.
-                    # This allows us to gracefully catch the 429 error and report it
-                    # instead of throwing an exception that crashes the agent.
-                    if status_code >= 400:
-                        if status_code == 429:
-                            return CrawlResult(url=url, status_code=status_code, error_message="HTTP Error: Too Many Requests")
-                        else:
-                            return CrawlResult(url=url, status_code=status_code, error_message=f"HTTP Error: {response.reason}")
-                    # --- END FIX ---
-
-                    html = await response.text()
+                # Create a new browser context
+                context = await browser.new_context(
+                    user_agent=self._user_agent,
+                    ignore_https_errors=True # Ignores SSL certificate errors
+                )
+                
+                page = await context.new_page()
+                
+                # Try to load the page
+                response = await page.goto(
+                    url, 
+                    timeout=self.timeout_ms, 
+                    wait_until="domcontentloaded" # Wait for DOM, not all network requests
+                )
+                
+                status_code = response.status
+                
+                if status_code >= 400:
+                    error_msg = f"HTTP Error: {status_code} {response.status_text}"
+                    if status_code == 429:
+                        error_msg = "HTTP Error: 429 Too Many Requests"
                     
                     return CrawlResult(
-                        url=url,
-                        status_code=status_code,
-                        html_content=html
+                        url=url, 
+                        status_code=status_code, 
+                        error_message=error_msg
                     )
 
-        except asyncio.TimeoutError:
-            return CrawlResult(url=url, status_code=408, error_message="Request timed out.")
+                # Get the *rendered* HTML content
+                html = await page.content()
+                
+                return CrawlResult(
+                    url=url,
+                    status_code=status_code,
+                    html_content=html
+                )
+
+        except PlaywrightTimeoutError:
+            logger.warning(f"Playwright timed out crawling {url}")
+            return CrawlResult(url=url, status_code=408, error_message=f"Request timed out after {self.timeout_ms / 1000}s.")
+        
+        except PlaywrightError as e:
+            # Catches other browser-level errors
+            logger.error(f"Playwright browser error for {url}: {e}")
+            return CrawlResult(url=url, status_code=500, error_message=f"Browser navigation error: {str(e)}")
+        
         except Exception as e:
-            # Catch other potential errors, e.g., invalid URL
+            # Catch-all for any other unexpected errors
+            logger.error(f"An unexpected error occurred crawling {url}: {e}", exc_info=True)
             return CrawlResult(url=url, status_code=500, error_message=f"An unexpected error occurred: {str(e)}")
-
-# # Example of how to run it (for testing purposes)
-# async def main():
-#     crawler = WebCrawler()
-#     result = await crawler.fetch_page("https://langchain.com/")
-#     if result.html_content:
-#         print(f"Successfully fetched {result.url} (Status: {result.status_code})")
-#         print(f"HTML starts with: {result.html_content[:200]}")
-#     else:
-#         print(f"Failed to fetch {result.url}: {result.error_message}")
-
-# if __name__ == '__main__':
-#     asyncio.run(main())
+        
+        finally:
+            # Ensure all browser resources are always closed
+            if page:
+                await page.close()
+            if context:
+                await context.close()
+            if browser:
+                await browser.close()

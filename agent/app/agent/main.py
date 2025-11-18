@@ -7,13 +7,13 @@ from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 
 # --- We will import the actual classes, not the tools ---
-from .sub_agents.crawler import WebCrawler, CrawlResult
-from .sub_agents.technical import TechnicalAuditor, TechnicalAuditResult
-from .sub_agents.onpage import OnPageAnalyzer, OnPageResult
-from .sub_agents.research import MarketResearcher, MarketResearchReport
-from .sub_agents.strategist import SeoStrategist, SeoStrategy
-from .sub_agents.optimizer import SeoOptimizer, OptimizationResult
-from .sub_agents.reporter import ReportGenerator
+from app.agent.sub_agents.crawler import WebCrawler, CrawlResult
+from app.agent.sub_agents.technical import TechnicalAuditor, TechnicalAuditResult
+from app.agent.sub_agents.onpage import OnPageAnalyzer, OnPageResult
+from app.agent.sub_agents.research import MarketResearcher, MarketResearchReport
+from app.agent.sub_agents.strategist import SeoStrategist, SeoStrategy
+from app.agent.sub_agents.optimizer import SeoOptimizer, OptimizationResult
+from app.agent.sub_agents.reporter import ReportGenerator
 from app.core.config import settings
 
 # Load .env file (if running locally)
