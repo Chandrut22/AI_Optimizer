@@ -23,14 +23,19 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field(default="INFO", description="Log level")
     LOG_FILE: str = Field(default="logs/app.log", description="Path to log file")
 
-    # --- ADD THIS LINE ---
     SPRING_BOOT_INTERNAL_URL: str = Field(
         ..., 
         description="Base URL for the internal Spring Boot service"
     )
-    # ---------------------
     
     ACTIVATION_SECRET: Optional[str] = Field(default=None, description="JWT secret (for HS256)")
+
+    # --- THIS IS THE FIX ---
+    PAGESPEED_API_KEY: str = Field(
+        ...,
+        description="Google PageSpeed Insights API Key"
+    )
+    # -----------------------
 
 
     class Config:
