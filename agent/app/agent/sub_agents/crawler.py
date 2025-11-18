@@ -121,7 +121,7 @@ class WebCrawler:
 # Example usage
 async def main():
     urls = [
-        "https://chandru22.vercel.app/"
+        "https://chandru22.vercel.app"
     ]
 
     async with WebCrawler(timeout=12, concurrency_limit=3) as crawler:
