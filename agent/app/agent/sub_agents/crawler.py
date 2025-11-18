@@ -1,135 +1,72 @@
 import asyncio
-import aiohttp
-import async_timeout
+import os
+from firecrawl import FirecrawlApp
 from pydantic import BaseModel, Field
 from typing import Optional
-import random
-import time
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class CrawlResult(BaseModel):
-    """A data model for storing the result of a crawl."""
     url: str
     status_code: int
     html_content: Optional[str] = Field(None)
-    error_message: Optional[str] = Field(None)
+    extracted_text: Optional[str] = None
+    error_message: Optional[str] = None
 
 
-class WebCrawler:
-    """
-    A production-ready scalable and robust asynchronous web crawler.
-    Includes:
-    - Retry logic
-    - Rate limiting
-    - Connection pooling
-    - Exponential backoff
-    """
-    
-    def __init__(
-        self,
-        timeout: int = 10,
-        max_retries: int = 3,
-        concurrency_limit: int = 5   # max parallel requests
-    ):
-        self.timeout = aiohttp.ClientTimeout(total=timeout)
-        self.max_retries = max_retries
-        self.semaphore = asyncio.Semaphore(concurrency_limit)
-
-        # Connection pooling + disable SSL verify (optional)
-        self.connector = aiohttp.TCPConnector(ssl=False, limit=50)
-
-        self.headers = {
-            "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-
-        self.session: aiohttp.ClientSession = None
-
-    async def __aenter__(self):
-        """Create a global session for reuse."""
-        self.session = aiohttp.ClientSession(
-            headers=self.headers,
-            timeout=self.timeout,
-            connector=self.connector
-        )
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        """Close session."""
-        if self.session:
-            await self.session.close()
-
-    async def _fetch_once(self, url: str) -> CrawlResult:
-        """
-        Fetch a page once (no retries).
-        """
-        try:
-            async with async_timeout.timeout(self.timeout.total):
-                async with self.session.get(url) as response:
-
-                    # Handle 429 Too Many Requests
-                    if response.status == 429:
-                        retry_after = response.headers.get("Retry-After", 1)
-                        return CrawlResult(
-                            url=url,
-                            status_code=429,
-                            error_message=f"Too Many Requests (Retry-After: {retry_after}s)"
-                        )
-
-                    response.raise_for_status()
-                    text = await response.text()
-
-                    return CrawlResult(
-                        url=url,
-                        status_code=response.status,
-                        html_content=text
-                    )
-
-        except aiohttp.ClientResponseError as e:
-            return CrawlResult(url=url, status_code=e.status, error_message=str(e))
-
-        except asyncio.TimeoutError:
-            return CrawlResult(url=url, status_code=408, error_message="Timeout")
-
-        except Exception as e:
-            return CrawlResult(url=url, status_code=500, error_message=str(e))
+class FirecrawlCrawler:
+    def __init__(self, api_key: Optional[str] = None):
+        # Use provided api_key or fallback to environment variable
+        if api_key is None:
+            api_key = os.getenv("FIRECRAWL_API_KEY")
+        
+        if not api_key:
+            raise ValueError("FIRECRAWL_API_KEY not found in environment variables or parameters")
+        
+        self.client = FirecrawlApp(api_key=api_key)
 
     async def fetch_page(self, url: str) -> CrawlResult:
-        """
-        Fetch a webpage with retries and exponential backoff.
-        """
-        async with self.semaphore:  # rate limit concurrency
-
-            for attempt in range(self.max_retries):
-                result = await self._fetch_once(url)
-
-                if result.status_code != 429:  
-                    return result
-
-                # If 429 Too Many Requests → exponential backoff
-                wait = 2 ** attempt + random.uniform(0, 1)
-                await asyncio.sleep(wait)
+        try:
+            response = await self.client.scrape_url_async(
+                url,
+                params={"formats": ["html", "markdown"]}
+            )
 
             return CrawlResult(
                 url=url,
-                status_code=429,
-                error_message="Failed after max retries"
+                status_code=200,
+                html_content=response.get("html"),
+                extracted_text=response.get("markdown"),
+                error_message=None
+            )
+
+        except Exception as e:
+            return CrawlResult(
+                url=url,
+                status_code=500,
+                error_message=str(e)
             )
 
 
 # Example usage
 async def main():
-    urls = [
-        "https://chandru22.vercel.app"
-    ]
+    # API key is now loaded from .env automatically
+    crawler = FirecrawlCrawler()
 
-    async with WebCrawler(timeout=12, concurrency_limit=3) as crawler:
-        tasks = [crawler.fetch_page(url) for url in urls]
-        results = await asyncio.gather(*tasks)
+    urls = ["https://chandru22.vercel.app"]
 
-        for r in results:
-            print(r.url, r.status_code, r.error_message)
+    tasks = [crawler.fetch_page(url) for url in urls]
+    results = await asyncio.gather(*tasks)
+
+    for result in results:
+        print("URL:", result.url)
+        print("Status:", result.status_code)
+        print("Error:", result.error_message)
+        print("HTML length:", len(result.html_content or ""))
+        print("Extracted text preview:", result.extracted_text[:150] if result.extracted_text else None)
 
 
 if __name__ == "__main__":
