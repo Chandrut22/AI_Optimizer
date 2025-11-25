@@ -5,16 +5,17 @@ from app.agent.utils.onpage import OnPageResult, OnPageAnalyzer
 from app.agent.utils.optimizer import OptimizationResultState, SeoOptimizer
 from app.agent.utils.research import MarketResearchReport, MarketResearcher
 from app.agent.utils.strategist import StrategyResult, SeoStrategist
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from typing import TypedDict, Annotated, Sequence
 from dotenv import load_dotenv
-from typing import TypedDict
+from operator import add as add_messages
 
 load_dotenv()
 
 class AgentState(TypedDict):
     url: str
-    # messages: Annotated[Sequence[BaseMessage], add_messages]
+    messages: Annotated[Sequence[BaseMessage], add_messages]
     crawl_result : CrawlState
     technicalAuditResult: TechnicalAuditResult
     onPageResult: OnPageResult
