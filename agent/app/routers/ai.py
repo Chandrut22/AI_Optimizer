@@ -1,4 +1,5 @@
 import logging
+import aiohttp
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from app.auth.dependencies import (
     get_current_activation_user, 
@@ -20,6 +21,39 @@ class SeoAnalysisRequest(BaseModel):
 # The response will be a complex JSON report from the agent,
 # so we use a generic 'dict' as the response model.
 # We will also add our 'usage_details' to it.
+
+async def verify_url_accessible(url: str) -> bool:
+    """
+    Checks if a URL is reachable (returns 200 OK) without downloading the full body.
+    """
+    try:
+        # We use a custom User-Agent because some sites block default python-aiohttp agents
+        headers = {'User-Agent': 'Mozilla/5.0 (compatible; SEO-Agent/1.0)'}
+        timeout = aiohttp.ClientTimeout(total=10) # 10s timeout
+        
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            # 1. Try HEAD request first (lightweight)
+            try:
+                async with session.head(url, headers=headers, allow_redirects=True) as resp:
+                    if resp.status < 400:
+                        return True
+                    # If 405 Method Not Allowed, fall back to GET
+                    if resp.status != 405:
+                        logger.warning(f"URL check failed {url}: Status {resp.status}")
+                        return False
+            except (aiohttp.ClientError, Exception):
+                pass # Fallthrough to GET
+
+            # 2. Fallback to GET request (stream=True to avoid downloading body)
+            async with session.get(url, headers=headers, allow_redirects=True) as resp:
+                if resp.status < 400:
+                    return True
+                logger.warning(f"URL check failed {url}: Status {resp.status}")
+                return False
+
+    except Exception as e:
+        logger.warning(f"URL validation exception for {url}: {str(e)}")
+        return False
 
 @router.post(
     "/agent/run-seo-analysis",
@@ -46,6 +80,13 @@ async def run_seo_analysis(
     """
     
     logger.info(f"User {user.sub} passed limit check. Reason: {usage_data.get('reason')}")
+
+    is_valid = await verify_url_accessible(req.url)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"The URL '{req.url}' is unreachable or does not exist. Please check the address and try again."
+        )
 
     # --- 1. Save to History (Fire and Forget) ---
     # We run this in the background (no 'await') so it doesn't block the AI
