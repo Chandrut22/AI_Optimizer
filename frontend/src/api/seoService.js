@@ -1,23 +1,30 @@
 import axios from "axios";
-// Remove the import for getAccessToken as it doesn't exist and isn't needed for cookie-based auth
-// import { getAccessToken } from "@/api/auth.js"; 
+import { API } from "./auth"; // Your existing axios instance with credentials
 
-// Agent backend API
 const SEO_API = axios.create({
   baseURL: import.meta.env.VITE_AGENT_URL,
-  withCredentials: true, // This ensures cookies (access_token) are sent with the request
 });
-
-// ✅ Removed the interceptor that tried to inject a non-existent token
-// The browser will handle sending the cookies automatically.
 
 export const analyzeSEO = async (url) => {
   try {
-    const response = await SEO_API.post("/api/ai/ask", {
-      question: url,
-    });
+    // 1. Call your new Backend endpoint to get the token
+    // (The browser automatically sends the HttpOnly cookie to authenticate this request)
+    const tokenResponse = await API.get("/auth/token");
+    const accessToken = tokenResponse.data.access_token;
+
+    // 2. Send the token in the header to the Python Agent
+    const response = await SEO_API.post("/api/ai/ask", 
+      { url: url },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
     return response.data;
+
   } catch (error) {
+    console.error("SEO Analysis Error:", error);
     throw error.response?.data || { message: "SEO analysis failed" };
   }
 };

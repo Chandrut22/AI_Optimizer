@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,6 +28,10 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+
+import com.auth.backend.dto.AccessTokenResponse; // Import the new DTO
+import com.auth.backend.model.User; // Import User model
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -186,5 +191,13 @@ public class AuthenticationController {
     public ResponseEntity<String> handleJwtException(JwtException ex) {
         log.error("JWT validation error during refresh: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Refresh token validation failed: " + ex.getMessage());
+    }
+
+    @GetMapping("/token")
+    public ResponseEntity<AccessTokenResponse> getAccessToken(
+            @AuthenticationPrincipal User user // Spring Security injects the current user here
+    ) {
+        log.info("Request to get raw access token for user: {}", user.getEmail());
+        return ResponseEntity.ok(authenticationService.getAccessTokenForAuthenticatedUser(user));
     }
 }

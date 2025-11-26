@@ -23,6 +23,7 @@ import com.auth.backend.repository.UserRepository;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import com.auth.backend.dto.AccessTokenResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -181,6 +182,14 @@ public class AuthenticationService {
         } else {
             throw new IllegalArgumentException("Cannot extract user email from refresh token");
         }
+    }
+
+    public AccessTokenResponse getAccessTokenForAuthenticatedUser(User user) {
+        String accessToken = jwtService.generateToken(user);
+        
+        return AccessTokenResponse.builder()
+                .accessToken(accessToken)
+                .build();
     }
 
     public void logout(HttpServletResponse response) {
