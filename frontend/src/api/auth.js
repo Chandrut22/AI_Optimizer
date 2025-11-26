@@ -55,11 +55,12 @@ export const registerUser = async ({ name, email, password }) => {
     return response.data;
 };
 
-export const verifyEmailCode = async ({ email, code }) => {
+export const verifyEmailCode = async ({ email, code, type }) => {
   try {
-    // If the type is 'register', we call the account verification endpoint.
-    // The backend expects { email: "...", code: "..." }
-    const response = await API.post("/auth/verify", { email, code });
+    // If type is "reset", use the new endpoint. Otherwise default to registration verify.
+    const endpoint = type === "reset" ? "/auth/verify-reset-code" : "/auth/verify";
+    
+    const response = await API.post(endpoint, { email, code });
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Verification failed" };

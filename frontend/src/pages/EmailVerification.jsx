@@ -102,7 +102,7 @@ const EmailVerification = () => {
   const navigate = useNavigate();
 
   const locationState = location.state || {};
-  const isPasswordReset = locationState?.type === "password-reset";
+  const isPasswordReset = locationState?.type === "reset";
   const userEmail = locationState?.email || "your email";
   const customMessage = locationState?.message;
 

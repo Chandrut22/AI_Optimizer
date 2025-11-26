@@ -182,6 +182,31 @@ public class AuthenticationService {
     }
 
     /**
+     * ✅ NEW: Verifies a code for password reset (Forgot Password flow).
+     * Does NOT check if user is enabled.
+     */
+    public void verifyResetCode(String email, String code) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        validateCode(user, code);
+        // We don't clear the code here; we wait for resetPassword() to do it
+        // or clear it if you want strict one-time use logic.
+        // For now, just validating is enough to let the frontend proceed.
+    }
+
+    // Helper to avoid code duplication
+    private void validateCode(User user, String code) {
+        if (user.getVerificationCode() == null || !user.getVerificationCode().equals(code)) {
+            throw new IllegalArgumentException("Invalid verification code.");
+        }
+
+        if (user.getCodeExpiration().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Verification code has expired.");
+        }
+    }
+
+    /**
      * Resends the verification code to the user's email if the account is not yet enabled.
      */
     public void resendVerificationCode(String email) {

@@ -128,6 +128,13 @@ public class AuthenticationController {
         }
     }
 
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<String> verifyResetCode(@RequestBody VerificationRequest request) {
+        log.info("Verify reset code endpoint hit for email: {}", request.getEmail());
+        authenticationService.verifyResetCode(request.getEmail(), request.getCode());
+        return ResponseEntity.ok("Code verified successfully.");
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<String> logout(HttpServletResponse response) {
         log.info("Logout endpoint hit");
