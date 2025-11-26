@@ -15,6 +15,8 @@ import org.springframework.web.cors.CorsConfigurationSource; // Import 2
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource; // Import 3
 
 import com.auth.backend.service.JwtAuthenticationFilter;
+import com.auth.backend.service.CustomOidcUserService;
+import com.auth.backend.service.OAuth2LoginSuccessHandler;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,6 +30,8 @@ import java.util.List;   // Import 5
 public class SecurityConfiguration {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final CustomOidcUserService customOidcUserService;
+    private final OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
 
     // Inject the allowed origins from properties
     @Value("${application.cors.allowed-origins}")
@@ -45,12 +49,20 @@ public class SecurityConfiguration {
                     "/hello",
                     "/api/v1/auth/**", // Covers register, authenticate, refresh, verify
                     "/api/v1/users/me", // Allow preflight for this too if needed
-                    "/error"
+                    "/error",
+                    "/oauth2/**",                   
+                    "/login/oauth2/code/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(userInfo -> userInfo
+                    .oidcUserService(customOidcUserService)
+                )
+                .successHandler(oauth2LoginSuccessHandler)
+            );
 
         return http.build();
     }

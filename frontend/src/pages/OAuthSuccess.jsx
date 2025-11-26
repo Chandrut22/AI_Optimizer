@@ -10,11 +10,19 @@ const OAuthSuccess = () => {
   useEffect(() => {
     const handleOAuthLogin = async () => {
       try {
-        // ✅ Fetch user from backend using secure cookie
-        const res = await getCurrentUser();
-        if (res.data) {
-          setUser(res.data);
-          navigate("/dashboard");
+        // ✅ Fetch user from backend (cookies are already set by OAuth2LoginSuccessHandler)
+        // getCurrentUser() returns the data object directly based on your api/auth.js
+        const userData = await getCurrentUser();
+        
+        if (userData) {
+          setUser(userData);
+          
+          // ✅ Check tier selection logic
+          if (userData.has_selected_tier) {
+            navigate("/dashboard");
+          } else {
+            navigate("/pricing");
+          }
         } else {
           console.error("User data not found");
           navigate("/login");

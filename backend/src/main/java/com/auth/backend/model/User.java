@@ -159,6 +159,7 @@ public class User implements UserDetails {
                 .role(this.role)
                 .createdAt(this.createdAt)
                 .authProvider(this.authProvider)
+                .hasSelectedTier(this.hasSelectedTier)
                 .build();
     }
 }

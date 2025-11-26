@@ -95,7 +95,7 @@ const Login = () => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = "https://ai-optimizer.onrender.com/oauth2/authorization/google";
+    window.location.href = "https://optimizer.koyeb.app/oauth2/authorization/google";
   };
 
   return (
