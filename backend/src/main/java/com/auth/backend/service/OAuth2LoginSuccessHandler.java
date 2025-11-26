@@ -29,7 +29,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final AuthenticationService authService; // For the cookie helper
+    private final CookieService cookieService; // ✅ REPLACED AuthenticationService with CookieService
 
     @Value("${application.security.oauth2.frontend-redirect-url}")
     private String frontendRedirectUrl;
@@ -43,28 +43,23 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
         String email = oidcUser.getEmail();
 
-        // Find the user in our DB (created by CustomOidcUserService)
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found after OAuth2 login: " + email));
 
-        // Generate our internal tokens
         String accessToken = jwtService.generateToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
 
-        // Set tokens as HttpOnly cookies
-        authService.addTokenCookie("access_token", accessToken, Duration.ofMillis(jwtExpirationMs), response);
-        authService.addTokenCookie("refresh_token", refreshToken, Duration.ofMillis(refreshExpirationMs), response);
+        // ✅ Use CookieService to set cookies
+        cookieService.addTokenCookie("access_token", accessToken, Duration.ofMillis(jwtExpirationMs), response);
+        cookieService.addTokenCookie("refresh_token", refreshToken, Duration.ofMillis(refreshExpirationMs), response);
 
-        // Build the redirect URL
         String targetUrl = UriComponentsBuilder.fromUriString(frontendRedirectUrl)
-                .queryParam("loginSuccess", true) // Optional: add a query param
+                .queryParam("loginSuccess", true)
                 .build().toUriString();
         
         log.info("OAuth2 login successful for user {}. Redirecting to {}", email, targetUrl);
 
-        // Manually clear the default Spring Security session
         clearAuthenticationAttributes(request);
-        // Redirect to the frontend
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }
