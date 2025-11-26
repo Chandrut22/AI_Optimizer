@@ -79,16 +79,12 @@ export const resendVerificationCode = async (email) => {
 
 export const forgotPassword = async (email) => {
   try {
-    const formData = new FormData();
-    formData.append("email", email);
-
-    const response = await API.post("/auth/forgot-password", formData);
+    const response = await API.post("/auth/forgot-password", { email });
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Request failed" };
   }
 };
-
 export const setNewPassword = async ({ email, newPassword }) => {
   try {
     const formData = new FormData();
