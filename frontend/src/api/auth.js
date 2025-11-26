@@ -34,7 +34,7 @@ API.interceptors.response.use(
 
 
 export const getCurrentUser = async () => {
-  const response = await API.get("/auth/me");
+  const response = await API.get("/users/me");
   return response.data;
 };
 
