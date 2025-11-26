@@ -81,12 +81,12 @@ async def run_seo_analysis(
     
     logger.info(f"User {user.sub} passed limit check. Reason: {usage_data.get('reason')}")
 
-    is_valid = await verify_url_accessible(req.url)
-    if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"The URL '{req.url}' is unreachable or does not exist. Please check the address and try again."
-        )
+    # is_valid = await verify_url_accessible(req.url)
+    # if not is_valid:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail=f"The URL '{req.url}' is unreachable or does not exist. Please check the address and try again."
+    #     )
 
     # --- 1. Save to History (Fire and Forget) ---
     # We run this in the background (no 'await') so it doesn't block the AI
