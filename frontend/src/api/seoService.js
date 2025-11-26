@@ -1,23 +1,15 @@
 import axios from "axios";
-import { getAccessToken } from "@/api/auth.js"; // ✅ Fixed import path
+// Remove the import for getAccessToken as it doesn't exist and isn't needed for cookie-based auth
+// import { getAccessToken } from "@/api/auth.js"; 
 
 // Agent backend API
 const SEO_API = axios.create({
   baseURL: import.meta.env.VITE_AGENT_URL,
-  withCredentials: true,
+  withCredentials: true, // This ensures cookies (access_token) are sent with the request
 });
 
-// ✅ Attach interceptor to inject token
-SEO_API.interceptors.request.use(
-  async (config) => {
-    const token = await getAccessToken(); // always get fresh token
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// ✅ Removed the interceptor that tried to inject a non-existent token
+// The browser will handle sending the cookies automatically.
 
 export const analyzeSEO = async (url) => {
   try {
