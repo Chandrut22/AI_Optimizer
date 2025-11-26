@@ -13,7 +13,7 @@ export const analyzeSEO = async (url) => {
     const accessToken = tokenResponse.data.access_token;
 
     // 2. Send the token in the header to the Python Agent
-    const response = await SEO_API.post("/api/ai/ask", 
+    const response = await SEO_API.post("/api/agent/run-seo-analysis", 
       { url: url },
       {
         headers: {
