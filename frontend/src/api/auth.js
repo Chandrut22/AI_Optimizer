@@ -86,13 +86,14 @@ export const forgotPassword = async (email) => {
     throw error.response?.data || { message: "Request failed" };
   }
 };
-export const setNewPassword = async ({ email, newPassword }) => {
+export const setNewPassword = async ({ email, code, newPassword }) => {
   try {
-    const formData = new FormData();
-    formData.append("email", email);
-    formData.append("newPassword", newPassword);
-
-    const response = await API.post("/auth/set-new-password", formData);
+    // Backend expects JSON with keys: email, code, newPassword
+    const response = await API.post("/auth/reset-password", { 
+      email, 
+      code, 
+      newPassword 
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Reset failed" };

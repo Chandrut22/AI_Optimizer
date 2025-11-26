@@ -1,214 +1,106 @@
-/* eslint-disable no-useless-escape */
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
-import {
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  Check,
-  X,
-  CheckCircle,
-  AlertCircle,
-  Key,
-} from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Eye, EyeOff, Lock, AlertCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { setNewPassword } from "@/api/auth"; // adjust path if needed
+import { setNewPassword } from "@/api/auth";
 
-
-// Utility Functions
-const checkPasswordStrength = (password) => ({
-  hasMinLength: password.length >= 8,
-  hasUppercase: /[A-Z]/.test(password),
-  hasLowercase: /[a-z]/.test(password),
-  hasNumber: /\d/.test(password),
-  hasSymbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
-});
-
-const getPasswordStrengthScore = (strength) =>
-  Object.values(strength).filter(Boolean).length;
-
-const getPasswordStrengthColor = (score) => {
-  if (score <= 2) return "bg-red-500";
-  if (score <= 3) return "bg-yellow-500";
-  if (score <= 4) return "bg-blue-500";
-  return "bg-green-500";
-};
-
-const getPasswordStrengthText = (score) => {
-  if (score <= 2) return "Weak";
-  if (score <= 3) return "Fair";
-  if (score <= 4) return "Good";
-  return "Strong";
-};
-
-const PasswordStrengthIndicator = ({ password }) => {
-  const strength = checkPasswordStrength(password);
-  const score = getPasswordStrengthScore(strength);
-  if (!password) return null;
-
-  return (
-    <div className="mt-3 space-y-3">
-      {/* Progress Bar */}
-      <div className="space-y-1">
-        <div className="flex justify-between text-xs">
-          <span className="text-[#6B7280] dark:text-[#94A3B8]">Password strength</span>
-          <span
-            className={cn(
-              "font-medium",
-              score <= 2 && "text-red-500",
-              score === 3 && "text-yellow-500",
-              score === 4 && "text-blue-500",
-              score === 5 && "text-green-500"
-            )}
-          >
-            {getPasswordStrengthText(score)}
-          </span>
-        </div>
-        <div className="h-2 bg-[#F3F4F6] dark:bg-[#334155] rounded-full overflow-hidden">
-          <div
-            className={cn("h-full transition-all duration-300 ease-out", getPasswordStrengthColor(score))}
-            style={{ width: `${(score / 5) * 100}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Criteria Checklist */}
-      <div className="grid grid-cols-1 gap-1.5 text-xs">
-        {Object.entries(strength).map(([key, value]) => {
-          const labelMap = {
-            hasMinLength: "At least 8 characters",
-            hasUppercase: "Uppercase letter",
-            hasLowercase: "Lowercase letter",
-            hasNumber: "Number",
-            hasSymbol: "Special character",
-          };
-          return (
-            <div
-              key={key}
-              className={cn(
-                "flex items-center gap-2",
-                value ? "text-green-600 dark:text-green-400" : "text-[#6B7280] dark:text-[#94A3B8]"
-              )}
-            >
-              {value ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-              <span>{labelMap[key]}</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
+const resetPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Must contain an uppercase letter")
+      .regex(/[a-z]/, "Must contain a lowercase letter")
+      .regex(/[0-9]/, "Must contain a number")
+      .regex(/[@$!%*?&]/, "Must contain a special character"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 const ResetPassword = () => {
-  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
-
-  const location = useLocation();
+  const [success, setSuccess] = useState(false);
+  
   const navigate = useNavigate();
-  const locationState = location.state || {};
-  const initialEmail = locationState.email || "";
-  const verifiedCode = locationState.verifiedCode;
+  const location = useLocation();
 
-  useEffect(() => {
-    if (!verifiedCode) {
-      navigate("/forgot-password");
-    }
-  }, [verifiedCode, navigate]);
+  // Retrieve email and verified code from the previous step
+  const { email, verifiedCode } = location.state || {};
 
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm({
+    resolver: zodResolver(resetPasswordSchema),
     mode: "onChange",
-    defaultValues: { email: initialEmail },
   });
 
-  const newPassword = watch("newPassword", "");
+  const onSubmit = async (data) => {
+    if (!email || !verifiedCode) {
+        setErrorMessage("Missing verification details. Please try the process again.");
+        return;
+    }
 
+    setIsLoading(true);
+    setErrorMessage(null);
 
-const onSubmit = async (data) => {
-  const { email, newPassword, confirmPassword } = data;
+    try {
+      // ✅ Call the updated API function
+      await setNewPassword({
+        email: email,
+        code: verifiedCode,
+        newPassword: data.password,
+      });
 
-  // Email validation
-  if (!email || !/\S+@\S+\.\S+/.test(email)) {
-    setErrorMessage("Please enter a valid email address");
-    return;
-  }
+      setSuccess(true);
+      
+      // Redirect to login after delay
+      setTimeout(() => {
+        navigate("/login");
+      }, 3000);
 
-  // Password validation
-  if (newPassword.length < 8) {
-    setErrorMessage("Password must be at least 8 characters");
-    return;
-  }
+    } catch (error) {
+      const msg = typeof error === 'string' 
+        ? error 
+        : (error.message || "Password reset failed. Please try again.");
+      setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  if (newPassword !== confirmPassword) {
-    setErrorMessage("Passwords do not match");
-    return;
-  }
-
-  setIsLoading(true);
-  setErrorMessage(null);
-
-  try {
-  const response = await setNewPassword({ email, newPassword });
-  console.log("Password reset response:", response);
-
-  setIsSuccess(true); // Show success message or UI state
-} catch (error) {
-  const errMsg =
-    error?.response?.data?.error || // from backend Map.of("error", ...)
-    error?.response?.data?.message || // fallback
-    "Something went wrong. Please try again.";
-
-  console.error("Password reset failed:", errMsg);
-
-  if (errMsg.includes("Reset code not verified")) {
-    setErrorMessage("Please verify the reset code before setting a new password.");
-  } else if (errMsg.includes("User not found")) {
-    setErrorMessage("User not found. Please check your email and try again.");
-  } else {
-    setErrorMessage(errMsg);
-  }
-
-} finally {
-  setIsLoading(false);
-}
-
-};
-
-  if (isSuccess) {
+  if (success) {
     return (
       <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0F172A] flex flex-col">
         <Header isLoggedIn={false} />
         <main className="flex-1 flex items-center justify-center p-4 py-24">
-          <div className="max-w-md w-full">
-            <div className="bg-white dark:bg-[#1E293B] border border-gray-300 dark:border-gray-600 rounded-xl shadow-lg p-8 text-center">
-              <div className="w-16 h-16 mx-auto mb-6 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
-              </div>
-              <h1 className="text-2xl font-semibold text-[#111827] dark:text-white mb-4">
-                Password Reset Successfully!
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Your password has been reset successfully. You can now sign in.
-              </p>
-              <Link to="/login">
-                <Button className="w-full bg-[#38BDF8] text-white">Return to Login</Button>
-              </Link>
+          <div className="w-full max-w-md text-center bg-card border rounded-xl shadow-lg p-8">
+            <div className="w-16 h-16 mx-auto mb-6 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+               <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
+            <h1 className="text-2xl font-semibold mb-2">Password Reset Complete</h1>
+            <p className="text-muted-foreground mb-6">
+              Your password has been successfully updated. You will be redirected to the login page shortly.
+            </p>
+            <Button onClick={() => navigate("/login")} className="w-full">
+              Go to Login Now
+            </Button>
           </div>
         </main>
         <Footer />
@@ -220,97 +112,82 @@ const onSubmit = async (data) => {
     <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#0F172A] flex flex-col">
       <Header isLoggedIn={false} />
       <main className="flex-1 flex items-center justify-center p-4 py-24">
-        <div className="max-w-md w-full">
-          <div className="bg-white dark:bg-[#1E293B] border border-gray-300 dark:border-gray-600 rounded-xl shadow-lg p-8">
-            {/* Header */}
+        <div className="w-full max-w-md">
+          <div className="bg-[#FFFFFF] dark:bg-[#1E293B] border border-[#D1D5DB] dark:border-[#475569] rounded-xl shadow-lg p-8">
             <div className="text-center mb-8">
-              <div className="flex justify-between items-center mb-6">
-                <Link to="/verify-email" className="flex items-center text-gray-600 dark:text-gray-400 hover:text-[#38BDF8]">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Link>
-                <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <Key className="h-6 w-6 text-white" />
+              <div className="flex justify-center mb-6">
+                <div className="w-12 h-12 bg-gradient-to-r from-primary to-blue-600 rounded-lg flex items-center justify-center">
+                  <Lock className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <h1 className="text-2xl font-semibold text-[#111827] dark:text-white mb-2">
-                Set Your New Password
+              <h1 className="text-2xl font-semibold font-inter text-[#111827] dark:text-[#F8FAFC] mb-2">
+                Set New Password
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Your code has been verified. Now create a new password.
+              <p className="text-[#6B7280] dark:text-[#94A3B8] text-sm">
+                Create a new strong password for your account.
               </p>
-              <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-700 dark:text-green-400">
-                <CheckCircle className="h-4 w-4 inline-block mr-1" />
-                Reset code verified successfully
-              </div>
             </div>
 
             {errorMessage && (
-              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400">
-                <AlertCircle className="h-4 w-4 inline-block mr-1" />
+              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-sm text-red-700 dark:text-red-400">
+                <AlertCircle className="h-4 w-4" />
                 {errorMessage}
               </div>
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Email */}
-              <div>
-                <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" {...register("email")} placeholder="Enter email" />
-              </div>
-
               {/* New Password */}
-              <div>
-                <Label htmlFor="newPassword">New Password</Label>
+              <div className="space-y-2">
+                <Label htmlFor="password">New Password</Label>
                 <div className="relative">
                   <Input
-                    id="newPassword"
-                    type={showNewPassword ? "text" : "password"}
-                    {...register("newPassword")}
-                    placeholder="Create password"
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter new password"
                     className="pr-10"
+                    {...register("password")}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
-                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                <PasswordStrengthIndicator password={newPassword} />
+                {errors.password && (
+                  <p className="text-xs text-red-500 mt-1">{errors.password.message}</p>
+                )}
               </div>
 
               {/* Confirm Password */}
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    {...register("confirmPassword")}
-                    placeholder="Confirm password"
+                    placeholder="Confirm new password"
                     className="pr-10"
+                    {...register("confirmPassword")}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                {errors.confirmPassword && (
+                  <p className="text-xs text-red-500 mt-1">{errors.confirmPassword.message}</p>
+                )}
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Updating Password..." : "Update Password"}
+              <Button type="submit" disabled={isLoading} className="w-full h-11">
+                {isLoading ? "Resetting Password..." : "Reset Password"}
               </Button>
             </form>
-
-            <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-              Remember your password?{" "}
-              <Link to="/login" className="text-[#38BDF8] font-medium">Sign in</Link>
-            </div>
           </div>
         </div>
       </main>
