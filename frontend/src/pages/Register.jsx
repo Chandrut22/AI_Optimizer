@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -125,59 +124,52 @@ const Register = () => {
   const password = watch("password", "");
 
   const onSubmit = async (data) => {
-  setIsLoading(true);
+    setIsLoading(true);
 
-  try {
-  const result = await registerUser({
-    name: data.name,
-    email: data.email,
-    password: data.password,
-  });
+    try {
+      // ✅ Call the API
+      await registerUser({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+      });
 
-  // ✅ Registration success – Navigate to verification page
-  navigate("/verify-email", {
-    state: {
-      email: data.email,
-      message: "Registration successful. Please verify your email.",
-    },
-  });
+      // ✅ Registration success – Navigate to verification page
+      navigate("/verify-email", {
+        state: {
+          email: data.email,
+          message: "Registration successful. Please check your email for the verification code.",
+        },
+      });
 
-} catch (error) {
-  const errorMsg =
-    error.response?.data?.error || "Something went wrong. Please try again.";
+    } catch (error) {
+      // ✅ Logic updated to match Backend Controller behavior
+      // The backend returns a plain string in the body for errors, not a JSON object with an 'error' key.
+      const status = error.status || error.response?.status;
+      const backendMessage = typeof error.response?.data === 'string' 
+        ? error.response?.data 
+        : (error.response?.data?.message || "Something went wrong.");
 
-  console.error("Registration failed:", errorMsg);
+      console.error("Registration failed:", backendMessage);
 
-  // Match known backend error messages
-  if (errorMsg.includes("Invalid email")) {
-    setError("email", {
-      type: "manual",
-      message: "Invalid email format.",
-    });
-  } else if (errorMsg.includes("Password must")) {
-    setError("password", {
-      type: "manual",
-      message:
-        "Password must be at least 8 characters with uppercase, lowercase, number, and special character.",
-    });
-  } else if (errorMsg.includes("Email already exists")) {
-    setError("email", {
-      type: "manual",
-      message: "This email is already registered.",
-    });
-  } else if (errorMsg.includes("Failed to send verification email")) {
-    alert(
-      "Registration successful, but we couldn't send the verification email. Please contact support."
-    );
-  } else {
-    alert(errorMsg);
-  }
+      // Handle specific status codes from AuthenticationController
+      if (status === 409 || backendMessage.includes("Email already in use")) {
+        setError("email", {
+          type: "manual",
+          message: "This email is already registered.",
+        });
+      } else if (status === 400) {
+        // Bad Request - often validation issues
+         alert(backendMessage);
+      } else {
+        // General fallback
+        alert(backendMessage || "Registration failed. Please try again.");
+      }
 
-} finally {
-  setIsLoading(false);
-}
-
-};
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   return (

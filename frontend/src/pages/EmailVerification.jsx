@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -108,7 +107,6 @@ const EmailVerification = () => {
   const customMessage = locationState?.message;
 
   const {
-    register,
     handleSubmit,
     setError,
     clearErrors,
@@ -134,86 +132,71 @@ const EmailVerification = () => {
     setIsLoading(true);
 
     try {
-  const result = await verifyEmailCode({
-    email: userEmail,
-    code: data.code,
-    type: isPasswordReset ? "reset" : "register", // Used in backend switch-case
-  });
+      await verifyEmailCode({
+        email: userEmail,
+        code: data.code,
+        type: isPasswordReset ? "reset" : "register",
+      });
 
-  console.log("Verification success:", result);
-  setIsSuccess(true);
+      setIsSuccess(true);
 
-  // Redirect after success
-  setTimeout(() => {
-    navigate(isPasswordReset ? "/reset-password" : "/login", {
-      state: isPasswordReset
-        ? { email: userEmail, verifiedCode: data.code }
-        : undefined,
-    });
-  }, 2000);
+      // Redirect after success
+      setTimeout(() => {
+        navigate(isPasswordReset ? "/reset-password" : "/login", {
+          state: isPasswordReset
+            ? { email: userEmail, verifiedCode: data.code }
+            : undefined,
+        });
+      }, 2000);
 
-} catch (error) {
-  const errorMsg =
-    error?.response?.data?.error ||
-    error?.response?.data?.message ||
-    "Something went wrong";
+    } catch (error) {
+      // Logic for catching errors (String or Object)
+      const errorMsg = typeof error === 'string' 
+        ? error 
+        : (error.message || error.error || "Verification failed");
 
-  console.error("Verification failed:", errorMsg);
+      console.error("Verification failed:", errorMsg);
 
-  // Custom error mapping
-  if (/User not found/i.test(errorMsg)) {
-    setError("code", { type: "manual", message: "User not found." });
-  } else if (/Invalid verification code/i.test(errorMsg)) {
-    setError("code", {
-      type: "manual",
-      message: "Invalid verification code. Please try again.",
-    });
-  } else if (/Invalid reset code/i.test(errorMsg)) {
-    setError("code", {
-      type: "manual",
-      message: "Invalid reset code. Please try again.",
-    });
-  } else if (/Reset code expired/i.test(errorMsg)) {
-    setError("code", {
-      type: "manual",
-      message: "Reset code expired. Please request a new code.",
-    });
-  } else {
-    // Fallback for unknown errors
-    setError("code", {
-      type: "manual",
-      message: errorMsg,
-    });
-  }
+      if (/User not found/i.test(errorMsg)) {
+        setError("code", { type: "manual", message: "User not found." });
+      } else if (/Invalid verification code/i.test(errorMsg)) {
+        setError("code", {
+          type: "manual",
+          message: "Invalid verification code. Please try again.",
+        });
+      } else if (/Account is already verified/i.test(errorMsg)) {
+         // If account is verified, treat as success or redirect
+         alert("Account already verified. Redirecting to login.");
+         navigate("/login");
+      } else {
+        setError("code", {
+          type: "manual",
+          message: errorMsg,
+        });
+      }
 
-} finally {
-  setIsLoading(false);
-}
-
+    } finally {
+      setIsLoading(false);
+    }
   };
 
 
   const handleResendCode = async () => {
     try {
       setResendLoading(true);
-      const result = await resendVerificationCode(userEmail);
-      console.log("Verification code resent:", result);
+      await resendVerificationCode(userEmail);
       alert("A new verification code has been sent to your email.");
       setResendCooldown(60);
     } catch (error) {
-      const message = error.response?.data?.message || "Failed to resend verification code.";
-
+      const message = error.message || "Failed to resend verification code.";
+      
       if (message.includes("User not found")) {
         alert("Email not found. Please check and try again.");
       } else if (message.includes("User already verified")) {
         alert("Your email is already verified. You can log in directly.");
-      } else if (message.includes("Failed to send verification email")) {
-        alert("Error sending email. Please try again later.");
       } else {
         alert(message);
       }
-
-      console.error("Resend code error:", message);
     } finally {
       setResendLoading(false);
     }
@@ -275,7 +258,7 @@ const EmailVerification = () => {
                       value={verificationCode}
                       onChange={(val) => {
                         setVerificationCode(val);
-                        setValue("code", val); // ✅ fix: update form value
+                        setValue("code", val);
                       }}
                       error={!!errors.code}
                     />
@@ -337,13 +320,6 @@ const EmailVerification = () => {
                 </div>
               </>
             )}
-          </div>
-
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border rounded-lg text-center">
-            <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-1">
-              Demo: Use code "123456" to verify
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400">Email: {userEmail}</p>
           </div>
         </div>
       </main>

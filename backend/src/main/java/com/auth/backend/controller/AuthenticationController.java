@@ -1,7 +1,5 @@
 package com.auth.backend.controller;
 
-import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -12,10 +10,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.WebUtils;
 
 import com.auth.backend.dto.AuthenticationRequest;
+import com.auth.backend.dto.AuthenticationResponse; // Added Import
 import com.auth.backend.dto.ForgotPasswordRequest;
 import com.auth.backend.dto.RegisterRequest;
 import com.auth.backend.dto.ResetPasswordRequest;
@@ -39,36 +39,45 @@ public class AuthenticationController {
     @PostMapping("/register")
     public ResponseEntity<String> register(
             @RequestBody RegisterRequest request
-            // HttpServletResponse is no longer needed here
     ) {
         log.info("Register endpoint hit with email: {}", request.getEmail());
-        // Pass null for response, as login doesn't happen on register anymore
-        authenticationService.register(request, null); 
+        // Updated to remove the unused 'null' response argument
+        authenticationService.register(request); 
         log.info("Registration successful for email: {}", request.getEmail());
         // Return the new success message
         return ResponseEntity.ok("Registration successful. Please check your email for verification code.");
     }
 
     @PostMapping("/authenticate")
-    public ResponseEntity<?> authenticate( 
+    public ResponseEntity<AuthenticationResponse> authenticate( 
             @RequestBody AuthenticationRequest request,
             HttpServletResponse response
     ) {
         log.info("Authenticate endpoint hit for email: {}", request.getEmail());
         
-        authenticationService.authenticate(request, response);
+        // Capture the response object from the service
+        AuthenticationResponse authResponse = authenticationService.authenticate(request, response);
         
         log.info("Authentication successful for email: {}", request.getEmail());
         
-        return ResponseEntity.ok(Map.of("message", "Authentication successful"));
+        // Return the full response object (containing has_selected_tier)
+        return ResponseEntity.ok(authResponse);
     }
 
-    // --- NEW: ACCOUNT VERIFICATION ENDPOINT ---
+    // --- ACCOUNT VERIFICATION ENDPOINT ---
     @PostMapping("/verify")
     public ResponseEntity<String> verifyAccount(@RequestBody VerificationRequest request) {
         log.info("Verify account endpoint hit for email: {}", request.getEmail());
         authenticationService.verifyAccount(request.getEmail(), request.getCode());
         return ResponseEntity.ok("Account verified successfully. You can now log in.");
+    }
+
+    // --- NEW: RESEND VERIFICATION CODE ENDPOINT ---
+    @PostMapping("/resend-verification")
+    public ResponseEntity<String> resendVerification(@RequestParam String email) {
+        log.info("Resend verification code endpoint hit for email: {}", email);
+        authenticationService.resendVerificationCode(email);
+        return ResponseEntity.ok("Verification code resent successfully.");
     }
 
     // --- NEW: FORGOT PASSWORD ENDPOINT ---
@@ -152,19 +161,14 @@ public class AuthenticationController {
     public ResponseEntity<String> handleAuthenticationException(Exception ex) {
         log.error("Authentication process failed: {}", ex.getMessage());
         
-        // This checks for the "Account is not verified" exception thrown during login
         if (ex.getMessage().contains("Account is not verified")) {
              return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
         }
         
-        // Handle "User not found" from forgotPassword
         if (ex instanceof UsernameNotFoundException) {
-            // We don't want to confirm/deny if an email exists in the system
-            log.warn("Non-existent email attempted forgot-password: {}", ex.getMessage());
-            return ResponseEntity.ok("Password reset code sent to your email."); // Send a generic success response
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
         }
 
-        // Default for bad credentials
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Authentication failed: Bad credentials");
     }
 

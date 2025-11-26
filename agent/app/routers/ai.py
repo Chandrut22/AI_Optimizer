@@ -88,24 +88,17 @@ async def run_seo_analysis(
     #         detail=f"The URL '{req.url}' is unreachable or does not exist. Please check the address and try again."
     #     )
 
-    # --- 1. Save to History (Fire and Forget) ---
-    # We run this in the background (no 'await') so it doesn't block the AI
     await save_scan_history_async(fastapi_request, req.url)
 
-    # --- 2. Run the Main AI Agent ---
     try:
         logger.info(f"Starting main agent for {req.url}...")
         
-        # Initialize MainAgent with the URL from the request
         main_agent = MainAgent(req.url)
         
-        # Run the full async pipeline
         result_report = await main_agent.run() 
         
         logger.info(f"Main agent finished for {req.url}.")
         
-        # --- 3. Return the full report ---
-        # Add the usage data to the final report for the frontend
         result_report["usage_details"] = usage_data.get("usage")
         return result_report
         

@@ -39,32 +39,21 @@ export const getCurrentUser = async () => {
 };
 
 export const loginUser = async (email, password) => {
-  try {
     await API.post("/auth/login", { email, password });
     const user = await getCurrentUser();
     return user;
-  } catch (error) {
-    throw error.response?.data || { message: "Login failed" };
-  }
 };
 
 export const registerUser = async ({ name, email, password }) => {
-  try {
     const response = await API.post("/auth/register", { name, email, password });
     return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: "Registration failed" };
-  }
 };
 
-export const verifyEmailCode = async ({ email, code, type }) => {
+export const verifyEmailCode = async ({ email, code }) => {
   try {
-    const formData = new FormData();
-    formData.append("email", email);
-    formData.append("code", code);
-    formData.append("type", type);
-
-    const response = await API.post("/auth/verify-code", formData);
+    // If the type is 'register', we call the account verification endpoint.
+    // The backend expects { email: "...", code: "..." }
+    const response = await API.post("/auth/verify", { email, code });
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Verification failed" };

@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.auth.backend.dto.AuthenticationRequest;
+import com.auth.backend.dto.AuthenticationResponse; // Added Import
 import com.auth.backend.dto.RegisterRequest;
 import com.auth.backend.enums.AccountTier;
 import com.auth.backend.enums.AuthProvider;
@@ -55,7 +56,8 @@ public class AuthenticationService {
      * Registers a new LOCAL user, sets them as disabled, and sends a verification email.
      * Does NOT log the user in or set cookies.
      */
-    public void register(RegisterRequest request, HttpServletResponse response) {
+    // Removed unused HttpServletResponse parameter
+    public void register(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email already in use: " + request.getEmail());
         }
@@ -84,9 +86,17 @@ public class AuthenticationService {
     /**
      * Authenticates a user with email/password.
      * Checks if the user is enabled before issuing cookies.
+     * Returns an AuthenticationResponse containing user state.
      */
-    public void authenticate(AuthenticationRequest request, HttpServletResponse response) {
-        // This will throw AuthenticationException if credentials are bad
+    public AuthenticationResponse authenticate(AuthenticationRequest request, HttpServletResponse response) {
+        var user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found."));
+
+        if (!user.isEnabled()) {
+            log.warn("Authentication failed for user '{}': Account is not verified.", request.getEmail());
+            throw new IllegalStateException("Account is not verified. Please check your email for a verification code.");
+        }
+
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
@@ -94,26 +104,16 @@ public class AuthenticationService {
                 )
         );
 
-        // Credentials are valid, now get the user
-        var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found after authentication")); // 3. Use specific exception
-
-        // Check if the user has verified their email
-        if (!user.isEnabled()) {
-            log.warn("Authentication failed for user '{}': Account is not verified.", request.getEmail());
-            throw new IllegalStateException("Account is not verified. Please check your email for a verification code.");
-        }
-
-        // User is valid and enabled, proceed with login
+        // --- 4. GENERATE TOKENS ---
         var jwtToken = jwtService.generateToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
 
-        // --- YOUR COOKIE LOGIC (This is correct) ---
-        // Make sure jwtExpirationMs and refreshExpirationMs are defined in this class
         addTokenCookie("access_token", jwtToken, Duration.ofMillis(jwtExpirationMs), response);
         addTokenCookie("refresh_token", refreshToken, Duration.ofMillis(refreshExpirationMs), response);
 
-        
+        return AuthenticationResponse.builder()
+                .hasSelectedTier(user.isHasSelectedTier())
+                .build();
     }
 
     /**
@@ -179,6 +179,25 @@ public class AuthenticationService {
         user.setVerificationCode(null);
         user.setCodeExpiration(null);
         userRepository.save(user);
+    }
+
+    /**
+     * Resends the verification code to the user's email if the account is not yet enabled.
+     */
+    public void resendVerificationCode(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        if (user.isEnabled()) {
+            throw new IllegalStateException("User already verified.");
+        }
+
+        String code = emailService.generateVerificationCode();
+        user.setVerificationCode(code);
+        user.setCodeExpiration(LocalDateTime.now().plusMinutes(15));
+        userRepository.save(user);
+
+        emailService.sendVerificationEmail(user.getName(), user.getEmail(), code);
     }
 
     /**

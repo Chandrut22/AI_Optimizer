@@ -66,45 +66,53 @@ const Login = () => {
     mode: "onChange",
   });
 
+  // ... state declarations remain the same
+  
   const onSubmit = async (data) => {
     setIsLoading(true);
     setLoginError(null);
 
     try {
-  // Step 1: Attempt login
-  await loginUser(data.email, data.password); // Sets secure cookies
+      // Step 1: Attempt login (calls /auth/authenticate)
+      // If successful, it automatically fetches user details via getCurrentUser
+      const user = await loginUser(data.email, data.password); 
+      
+      // Step 2: Update Auth Context
+      setUser(user); 
 
-  // Step 2: Fetch user details
-  const user = await getCurrentUser();
-  setUser(user); // ✅ Save to context or state
+      // Step 3: Navigate to dashboard
+      navigate("/dashboard");
 
-  // Step 3: Navigate to dashboard
-  navigate("/dashboard");
+    } catch (error) {
+      // ✅ Now 'error' is the full Axios error object because we removed try/catch from api/auth.js
+      const status = error?.response?.status;
+      // Backend might send string or object, safe fallback:
+      const backendMessage = typeof error?.response?.data === 'string' 
+        ? error?.response?.data 
+        : error?.response?.data?.message || "Something went wrong.";
 
-} catch (error) {
-  const status = error?.response?.status;
-  const backendMessage = error?.response?.data?.error || "Something went wrong.";
+      console.error("Login failed:", backendMessage);
 
-  console.error("Login failed:", backendMessage);
+      // Reset previous field errors
+      setError("email", { type: "manual", message: "" });
+      setError("password", { type: "manual", message: "" });
 
-  // Reset previous field errors
-  setError("email", { type: "manual", message: "" });
-  setError("password", { type: "manual", message: "" });
+      // ✅ Handle the specific status codes from the backend
+      if (status === 404) {
+        setLoginError("User not found.");
+      } else if (status === 403) {
+        setLoginError("Please verify your email before logging in.");
+      } else if (status === 401) {
+        setLoginError("Incorrect email or password.");
+      } else if (status === 409) {
+        setLoginError("Conflict error occurred.");
+      } else {
+        setLoginError(backendMessage || "Something went wrong. Please try again later.");
+      }
 
-  if (status === 404) {
-    setLoginError("User not found.");
-  } else if (status === 403) {
-    setLoginError("Please verify your email before logging in.");
-  } else if (status === 401) {
-    setLoginError("Incorrect email or password.");
-  } else {
-    setLoginError("Something went wrong. Please try again later.");
-  }
-
-} finally {
-  setIsLoading(false);
-}
-
+    } finally {
+      setIsLoading(false);
+    }
   };
 
 
