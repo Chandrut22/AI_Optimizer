@@ -44,7 +44,8 @@ public class SecurityConfiguration {
                 .requestMatchers(
                     "/hello",
                     "/api/v1/auth/**", // Covers register, authenticate, refresh, verify
-                    "/api/v1/users/me" // Allow preflight for this too if needed
+                    "/api/v1/users/me", // Allow preflight for this too if needed
+                    "/error"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
