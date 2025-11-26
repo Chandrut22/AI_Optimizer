@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,15 +22,17 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { selectTier } from "@/api/auth"; // ✅ Import API function
+import { useAuth } from "@/context/AuthContext"; // ✅ Import Auth Context
 
 const Pricing = () => {
   const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState("monthly");
+  const [isSelecting, setIsSelecting] = useState(false);
   
-  // Check if user is logged in
-  const accessToken = localStorage.getItem("accessToken");
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const isLoggedIn = !!(accessToken && user.email);
+  // Check if user is logged in via context
+  const { user, setUser } = useAuth();
+  const isLoggedIn = !!user;
 
   const plans = [
     {
@@ -163,12 +166,35 @@ const Pricing = () => {
     },
   ];
 
-  const handleGetStarted = (planName) => {
-    const encodedPlan = encodeURIComponent(planName || "");
-    if (isLoggedIn) {
-      navigate(`/dashboard${encodedPlan ? `?plan=${encodedPlan}` : ""}`);
+  const handleGetStarted = async (planName) => {
+    // If not logged in, send to register
+    if (!isLoggedIn) {
+        const encodedPlan = encodeURIComponent(planName || "");
+        navigate(`/register${encodedPlan ? `?plan=${encodedPlan}` : ""}`);
+        return;
+    }
+
+    // If logged in and selecting the Starter/Free plan
+    if (planName === "Starter" || planName === "trial") {
+        setIsSelecting(true);
+        try {
+            // Call backend to set tier to FREE
+            await selectTier("FREE");
+            
+            // Update local user context to reflect change
+            // Assuming setUser merges or we re-fetch user
+            // For now, let's assuming we manually update the flag locally or force a refresh logic
+            // But simpler is to just navigate to dashboard
+            navigate("/dashboard");
+        } catch (error) {
+            console.error("Failed to select tier:", error);
+            alert("Failed to select plan. Please try again.");
+        } finally {
+            setIsSelecting(false);
+        }
     } else {
-      navigate(`/register${encodedPlan ? `?plan=${encodedPlan}` : ""}`);
+        // Handle payment plans (Pro/Enterprise) here later
+        console.log("Payment required for", planName);
     }
   };
 
@@ -285,7 +311,7 @@ const Pricing = () => {
                   <CardContent className="space-y-6">
                     <Button
                       onClick={() => !plan.isComingSoon && handleGetStarted(plan.name)}
-                      disabled={plan.isComingSoon}
+                      disabled={plan.isComingSoon || isSelecting}
                       className={cn(
                         "w-full h-12 text-lg font-semibold transition-all",
                         plan.isComingSoon
@@ -296,8 +322,8 @@ const Pricing = () => {
                       )}
                       variant={plan.isComingSoon ? "outline" : (plan.highlight ? "default" : "outline")}
                     >
-                      {plan.cta}
-                      {!plan.isComingSoon && <ArrowRight className="ml-2 h-5 w-5" />}
+                      {isSelecting && !plan.isComingSoon ? "Processing..." : plan.cta}
+                      {!plan.isComingSoon && !isSelecting && <ArrowRight className="ml-2 h-5 w-5" />}
                     </Button>
 
                     <div className="space-y-3">

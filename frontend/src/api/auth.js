@@ -38,11 +38,13 @@ export const getCurrentUser = async () => {
 
 // --- Auth Endpoints ---
 export const loginUser = async (email, password) => {
-  await API.post("/auth/authenticate", { email, password });
+  const authResponse = await API.post("/auth/authenticate", { email, password });
   const user = await getCurrentUser();
-  return user;
+  return { 
+    ...user, 
+    hasSelectedTier: authResponse.data.has_selected_tier 
+  };
 };
-
 export const registerUser = async ({ name, email, password }) => {
   try {
     const response = await API.post("/auth/register", { name, email, password });
@@ -107,3 +109,11 @@ export const logoutUser = async () => {
 };
 
 
+export const selectTier = async (tier) => {
+  try {
+    const response = await API.post("/users/select-tier", { tier });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to select tier" };
+  }
+};
