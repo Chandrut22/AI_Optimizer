@@ -39,7 +39,7 @@ export const getCurrentUser = async () => {
 };
 
 export const loginUser = async (email, password) => {
-    await API.post("/auth/login", { email, password });
+    await API.post("/auth/authenticate", { email, password });
     const user = await getCurrentUser();
     return user;
 };
