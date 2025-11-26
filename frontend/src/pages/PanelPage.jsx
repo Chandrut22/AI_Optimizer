@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
-import { analyzeSEO } from "@/api/seoService"; // ✅ import your SEO API
+// Removed analyzeSEO import since we will let the Results page handle the fetching
+// or we pass the URL to the results page to fetch.
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -50,38 +51,20 @@ const PanelPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  // Don’t render until user exists (ProtectedRoute usually prevents this)
   if (!user) return null;
 
   const { role = "USER", email, name } = user;
-  const roleLower = role.toLowerCase();
-
-  // SEO State
+  
   const [url, setUrl] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [seoResult, setSeoResult] = useState(null);
-  const [seoError, setSeoError] = useState("");
 
-  // Handlers
   const handleLogout = async () => {
     await logout();
-    // Redirect handled by ProtectedRoute
   };
 
-  const handleSEOAnalysis = async () => {
+  const handleSEOAnalysis = () => {
     if (!url) return;
-    setIsAnalyzing(true);
-    setSeoResult(null);
-    setSeoError("");
-
-    try {
-      const result = await analyzeSEO(url); // ✅ call backend
-      setSeoResult(result);
-    } catch (error) {
-      setSeoError(error.message || "Failed to analyze SEO");
-    } finally {
-      setIsAnalyzing(false);
-    }
+    // ✅ Navigate to the results page with the URL encoded
+    navigate(`/seo-results/${encodeURIComponent(url)}`);
   };
 
   return (
@@ -157,41 +140,14 @@ const PanelPage = () => {
                   </div>
                   <Button
                     onClick={handleSEOAnalysis}
-                    disabled={!url || isAnalyzing}
+                    disabled={!url}
                     className="min-w-[120px]"
                   >
-                    {isAnalyzing ? (
-                      <>
-                        <Clock className="h-4 w-4 mr-2 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Search className="h-4 w-4 mr-2" />
-                        Analyze
-                      </>
-                    )}
+                    <Search className="h-4 w-4 mr-2" />
+                    Analyze
                   </Button>
                 </div>
               </div>
-
-              {/* SEO Result */}
-              {seoResult && (
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                  <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2">
-                    SEO Analysis Result
-                  </h4>
-                  <pre className="whitespace-pre-wrap text-sm text-green-700 dark:text-green-200">
-                    {JSON.stringify(seoResult, null, 2)}
-                  </pre>
-                </div>
-              )}
-
-              {seoError && (
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                  <p className="text-red-700 dark:text-red-300">{seoError}</p>
-                </div>
-              )}
             </CardContent>
           </Card>
 
