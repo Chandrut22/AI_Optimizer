@@ -11,19 +11,25 @@ API.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const status = error.response?.status;
 
+    // Check for 401 (Unauthorized) OR 403 (Forbidden)
+    // Spring Security returns 403 for missing tokens by default
     if (
-      error.response?.status === 401 &&
+      (status === 401 || status === 403) && 
       !originalRequest._retry &&
       originalRequest.url !== "/auth/refresh-token"
     ) {
       originalRequest._retry = true;
       try {
-        await API.post("/auth/refresh-token"); // ✅ FIXED
+        // Attempt to refresh the token using the HttpOnly refresh_token cookie
+        await API.post("/auth/refresh-token"); 
 
-        return API(originalRequest); // retry original request
+        // Retry the original request with the new access token
+        return API(originalRequest); 
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);
+        // If refresh fails, let the error bubble up (AuthContext will redirect to login)
         return Promise.reject(refreshError);
       }
     }
