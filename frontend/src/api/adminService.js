@@ -11,7 +11,7 @@ export const fetchAllUsers = async () => {
 // Promote a user to admin
 export const promoteUser = async (userId) => {
   try {
-    const response = await API.put(`/admin/promote/${userId}`);
+    const response = await API.put(`/admin/users/promote/${userId}`);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Failed to promote user" };
@@ -21,7 +21,7 @@ export const promoteUser = async (userId) => {
 // Demote an admin to user
 export const demoteUser = async (userId) => {
   try {
-    const response = await API.put(`/admin/depromote/${userId}`);
+    const response = await API.put(`/admin/users/depromote/${userId}`);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Failed to demote user" };
@@ -32,7 +32,7 @@ export const demoteUser = async (userId) => {
 // Delete user
 export const deleteUser = async (userId) => {
   try {
-    const response = await API.delete(`/admin/delete/${userId}`);
+    const response = await API.delete(`/admin/users/delete/${userId}`);
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Failed to delete user" };
