@@ -8,7 +8,6 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# --- EXISTING CODE (Correct) ---
 
 def get_authorization_token(request: Request) -> str:
     """
@@ -45,7 +44,6 @@ def get_current_activation_user(token: str = Depends(get_authorization_token)) -
     return validate_activation_token(token)
 
 
-# --- NEW REUSABLE DEPENDENCIES ---
 
 async def check_spring_boot_limit(request: Request) -> dict:
     """
@@ -67,20 +65,18 @@ async def check_spring_boot_limit(request: Request) -> dict:
     headers = {"Authorization": auth_header}
 
     try:
-        # Use an async client
         async with httpx.AsyncClient() as client:
             response = await client.post(check_url, headers=headers)
 
         if response.status_code == 200:
-            return response.json() # Success!
+            return response.json() 
 
-        # --- Handle all known errors ---
-        if response.status_code == 402: # Trial Expired
+        if response.status_code == 402: 
             raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,
                 detail="Your 14-day free trial has expired."
             )
-        elif response.status_code == 429: # Daily Limit
+        elif response.status_code == 429: 
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="You have exceeded your daily limit of 10 AI requests."
@@ -133,5 +129,4 @@ async def save_scan_history_async(request: Request, url: str):
             await client.post(history_url, headers=headers, json=payload)
         logger.info(f"Successfully saved scan history for {url}")
     except httpx.RequestError as e:
-        # Log the error but don't fail the whole scan
         logger.warning(f"Failed to save scan history for {url}: {e}")

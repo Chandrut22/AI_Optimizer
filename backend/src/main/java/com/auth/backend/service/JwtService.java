@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Service; // <-- Make sure this is java.util.Base64
+import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -43,7 +43,6 @@ public class JwtService {
     @Value("${application.security.jwt.refresh-token.expiration}")
     private long refreshExpiration;
 
-    // Lazily loaded keys
     private PrivateKey signInKey;
     private PublicKey validationKey;
 
@@ -58,7 +57,6 @@ public class JwtService {
 
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> extraClaims = new HashMap<>();
-        // Add roles ("authorities") to the token
         extraClaims.put("authorities", userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList()));
@@ -80,7 +78,6 @@ public class JwtService {
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                // --- SIGN WITH RS256 and the PRIVATE KEY ---
                 .signWith(getSignInKey(), SignatureAlgorithm.RS256)
                 .compact();
     }
@@ -100,7 +97,7 @@ public class JwtService {
             return extractExpiration(token).before(new Date());
         } catch (Exception e) {
             log.warn("JWT expired or invalid: {}", e.getMessage());
-            return true; // If we can't parse expiration, treat it as expired
+            return true; 
         }
     }
 
@@ -109,16 +106,14 @@ public class JwtService {
     }
 
     private Claims extractAllClaims(String token) {
-        // --- VALIDATE WITH THE PUBLIC KEY ---
         return Jwts
                 .parserBuilder()
-                .setSigningKey(getValidationKey()) // Use the PUBLIC key to validate
+                .setSigningKey(getValidationKey()) 
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
 
-    // --- HELPER METHODS for RS256 ---
 
     /**
      * Gets the PrivateKey used for SIGNING tokens.
@@ -145,18 +140,14 @@ public class JwtService {
      */
     private PrivateKey parsePrivateKey(String pemKey) {
         try {
-            // 1. Turn the literal "\n" strings back into real newlines
             String formattedKey = pemKey.replace("\\n", "\n");
 
-            // 2. Remove ONLY the header and footer
             String privateKeyContent = formattedKey
                     .replace("-----BEGIN PRIVATE KEY-----", "")
                     .replace("-----END PRIVATE KEY-----", "")
-                    .replace("-----BEGIN RSA PRIVATE KEY-----", "") // Handle alternate format
+                    .replace("-----BEGIN RSA PRIVATE KEY-----", "") 
                     .replace("-----END RSA PRIVATE KEY-----", "");
-                    // We DO NOT use replaceAll("\\s", "") here
 
-            // 3. Decode. The MimeDecoder handles newlines/whitespace!
             byte[] keyBytes = Base64.getMimeDecoder().decode(privateKeyContent);
 
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
@@ -174,16 +165,12 @@ public class JwtService {
      */
     private PublicKey parsePublicKey(String pemKey) {
         try {
-            // 1. Turn the literal "\n" strings back into real newlines
             String formattedKey = pemKey.replace("\\n", "\n");
             
-            // 2. Remove ONLY the header and footer
             String publicKeyContent = formattedKey
                     .replace("-----BEGIN PUBLIC KEY-----", "")
                     .replace("-----END PUBLIC KEY-----", "");
-                    // We DO NOT use replaceAll("\\s", "") here
 
-            // 3. Decode. The MimeDecoder handles newlines/whitespace!
             byte[] keyBytes = Base64.getMimeDecoder().decode(publicKeyContent);
 
             X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);

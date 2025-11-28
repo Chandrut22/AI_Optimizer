@@ -27,7 +27,6 @@ class TechnicalAuditor:
     Performs a technical SEO audit using the Google PageSpeed Insights API (Synchronous).
     """
     def __init__(self, api_key: Optional[str] = None):
-        # Fetch from env if not passed
         if api_key is None:
             api_key = os.getenv("PAGESPEED_API_KEY")
             
@@ -48,14 +47,12 @@ class TechnicalAuditor:
         error_message: Optional[str] = None
 
         try:
-            # SYNC CHANGE: Using requests.get instead of await client.get
             response = requests.get(self.base_url, params=params, timeout=self.timeout)
-            response.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
+            response.raise_for_status() 
             
             data = response.json()
             return self._parse_response(url, data)
 
-        # SYNC CHANGE: Updated Exception types for 'requests' library
         except requests.exceptions.Timeout:
             error_message = f"API request timed out after {self.timeout}s. The PageSpeed API is slow."
             print(f"--- TIMEOUT ERROR --- \n{error_message}\n")
@@ -65,7 +62,6 @@ class TechnicalAuditor:
             print(f"--- HTTP STATUS ERROR --- \n{error_message}\n")
         
         except requests.exceptions.RequestException as e:
-            # Catch-all for connection errors, DNS, etc.
             error_message = f"API request failed: {type(e).__name__} - {str(e)}"
             print(f"--- REQUEST ERROR --- \n{error_message}\n")
 
@@ -74,7 +70,6 @@ class TechnicalAuditor:
             print("--- UNEXPECTED ERROR ---")
             traceback.print_exc()
         
-        # Return a failed result object
         return TechnicalAuditResult(
             url=url, 
             performance_score=None, 
@@ -90,17 +85,12 @@ class TechnicalAuditor:
         categories = lighthouse_result.get('categories', {})
         audits = lighthouse_result.get('audits', {})
 
-        # Safe extraction with defaults
         performance_score = int(categories.get('performance', {}).get('score', 0) * 100)
         
-        # 'is-on-https' returns 1 (pass) or 0 (fail)
         uses_https = audits.get('is-on-https', {}).get('score') == 1
         
-        # Note: mobile-friendly is sometimes deprecated/moved, logic kept as requested
-        # often found in 'viewport' or inferred from other mobile metrics now.
-        mobile_friendly = True # Placeholder as specific mobile-friendly audit varies by API version
+        mobile_friendly = True 
         
-        # Web Vitals
         lcp = audits.get('largest-contentful-paint', {}).get('numericValue', 0) / 1000
         fid = audits.get('max-potential-fid', {}).get('numericValue', 0)
         cls = audits.get('cumulative-layout-shift', {}).get('numericValue', 0)

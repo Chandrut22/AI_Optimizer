@@ -1,16 +1,18 @@
 package com.auth.backend.service;
 
-import com.auth.backend.dto.UserResponse;
-import com.auth.backend.enums.Role;
-import com.auth.backend.model.User;
-import com.auth.backend.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import com.auth.backend.dto.UserResponse;
+import com.auth.backend.enums.Role;
+import com.auth.backend.model.User;
+import com.auth.backend.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
 
 
 @Service
@@ -40,7 +42,7 @@ public class AdminService {
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll()
                 .stream()
-                .map(User::toUserResponse) // Convert each User to UserResponse
+                .map(User::toUserResponse) 
                 .collect(Collectors.toList());
     }
 

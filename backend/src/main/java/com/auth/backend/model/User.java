@@ -5,8 +5,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set; // <-- Add this
-
+import java.util.Set;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.security.core.GrantedAuthority;
@@ -18,6 +17,7 @@ import com.auth.backend.enums.AccountTier;
 import com.auth.backend.enums.AuthProvider;
 import com.auth.backend.enums.Role;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -27,7 +27,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -62,12 +61,12 @@ public class User implements UserDetails {
     private String password;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false) // Removed 'columnDefinition'
+    @Column(nullable = false) 
     @Builder.Default
     private Role role = Role.USER;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false) // Removed 'columnDefinition'
+    @Column(nullable = false) 
     @Builder.Default
     private AuthProvider authProvider = AuthProvider.LOCAL;
 
@@ -75,9 +74,8 @@ public class User implements UserDetails {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // --- Verification & Reset Fields ---
 
-    @Column(nullable = false) // Removed 'columnDefinition'
+    @Column(nullable = false)
     @Builder.Default
     private boolean enabled = false;
 
@@ -85,21 +83,20 @@ public class User implements UserDetails {
 
     private LocalDateTime codeExpiration;
 
-    // --- ADD FREE TRIAL FIELDS HERE ---
 
     @Column(name = "last_request_date")
     private LocalDate lastRequestDate;
 
-    @Column(name = "daily_request_count", nullable = false) // Removed 'columnDefinition'
+    @Column(name = "daily_request_count", nullable = false) 
     @Builder.Default
     private int dailyRequestCount = 0;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false) // Removed 'columnDefinition'
+    @Column(nullable = false) 
     @Builder.Default
     private AccountTier accountTier = AccountTier.FREE;
 
-    @Column(nullable = false) // Removed 'columnDefinition'
+    @Column(nullable = false)
     @Builder.Default
     private boolean hasSelectedTier = false;
 
@@ -108,7 +105,6 @@ public class User implements UserDetails {
     private Set<ScanHistory> scanHistories = new HashSet<>();
     
     
-    // --- UserDetails Implementation ---
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -149,7 +145,6 @@ public class User implements UserDetails {
         return this.enabled;
     }
 
-    // --- DTO Helper Method ---
 
     public UserResponse toUserResponse() {
         return UserResponse.builder()

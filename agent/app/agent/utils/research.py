@@ -79,7 +79,6 @@ class MarketResearcher:
             )
 
         except Exception as e:
-            # Return empty/safe structure on failure
             return MarketResearchReport(
                 keyword_analysis=None,
                 competitor_urls=[],
@@ -92,7 +91,6 @@ class MarketResearcher:
         prompt = ChatPromptTemplate.from_template(
             "Analyze the webpage content. Identify 1 primary keyword and 3-5 secondary keywords.\n\nTitle: {title}\n\nContent: {content}"
         )
-        # InternalKeywordSchema must be defined in your file
         chain = prompt | self.llm.with_structured_output(InternalKeywordSchema)
         
         result = chain.invoke({
@@ -100,9 +98,8 @@ class MarketResearcher:
             "content": self.page_content[:10000],
         })
         
-        # --- CRITICAL FIX: Convert Pydantic Object to Dictionary ---
-        if hasattr(result, 'model_dump'): return result.model_dump() # Pydantic v2
-        if hasattr(result, 'dict'): return result.dict() # Pydantic v1
+        if hasattr(result, 'model_dump'): return result.model_dump() 
+        if hasattr(result, 'dict'): return result.dict() 
         return result
 
     def _analyze_competitors(self, primary_keyword: str) -> List[Dict[str, Any]]:

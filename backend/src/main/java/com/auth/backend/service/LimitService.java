@@ -20,12 +20,11 @@ public class LimitService {
 
     private final UserRepository userRepository;
 
-    // --- DTO for Usage Details (Used by both responses) ---
     @Getter
     public static class UsageDetails {
-        private final Object dailyCount; // Use Object for "N/A"
-        private final Object dailyMax;   // Use Object for "UNLIMITED"
-        private final Object trialEndDate; // Use Object for "N/A"
+        private final Object dailyCount; 
+        private final Object dailyMax; 
+        private final Object trialEndDate;
 
         public UsageDetails(Object dailyCount, Object dailyMax, Object trialEndDate) {
             this.dailyCount = dailyCount;
@@ -33,26 +32,22 @@ public class LimitService {
             this.trialEndDate = trialEndDate;
         }
 
-        // Static factory for a PRO user
         public static UsageDetails pro() {
             return new UsageDetails("N/A", "UNLIMITED", "N/A");
         }
         
-        // Static factory for a FREE user
         public static UsageDetails free(int dailyCount, LocalDateTime trialEndDate) {
             return new UsageDetails(dailyCount, 10, trialEndDate.toLocalDate().toString());
         }
     }
 
-    // --- 1. DTO for Check & Increment (Existing) ---
     @Getter 
     public static class LimitCheckResponse {
         private final boolean allowed;
         private final String reason;
         private final int httpStatus;
-        private final UsageDetails usage; // Can be null
+        private final UsageDetails usage; 
 
-        // Constructor for DENIED responses
         public LimitCheckResponse(boolean allowed, String reason, int httpStatus) {
             this.allowed = allowed;
             this.reason = reason;
@@ -60,7 +55,6 @@ public class LimitService {
             this.usage = null; 
         }
 
-        // Constructor for ALLOWED responses
         public LimitCheckResponse(boolean allowed, String reason, int httpStatus, UsageDetails usage) {
             this.allowed = allowed;
             this.reason = reason;
@@ -69,13 +63,12 @@ public class LimitService {
         }
     }
 
-    // --- 2. NEW DTO for Read-Only Status Check ---
     @Getter
     public static class UsageStatusResponse {
         private final boolean hasSelectedTier;
         private final AccountTier accountTier;
-        private final UsageDetails usage; // Can be null if tier not selected
-        private final String trialStatus; // e.g., "ACTIVE", "EXPIRED", "N/A"
+        private final UsageDetails usage; 
+        private final String trialStatus; 
 
         public UsageStatusResponse(User user, UsageDetails usage, String trialStatus) {
             this.hasSelectedTier = user.isHasSelectedTier();
@@ -84,7 +77,6 @@ public class LimitService {
             this.trialStatus = trialStatus;
         }
         
-        // Special constructor for user who hasn't selected tier
         public UsageStatusResponse(User user) {
             this.hasSelectedTier = user.isHasSelectedTier();
             this.accountTier = user.getAccountTier();
@@ -113,7 +105,6 @@ public class LimitService {
             return new LimitCheckResponse(true, "ALLOWED_PRO", 200, UsageDetails.pro());
         }
 
-        // --- FREE TIER LOGIC ---
         LocalDate today = LocalDate.now();
         LocalDateTime trialEndDate = user.getCreatedAt().plusDays(14);
 
@@ -130,7 +121,6 @@ public class LimitService {
             return new LimitCheckResponse(false, "DAILY_LIMIT_REACHED", 429);
         }
 
-        // This is the "WRITE" part of the operation
         user.setDailyRequestCount(user.getDailyRequestCount() + 1);
         userRepository.save(user);
 
@@ -148,24 +138,19 @@ public class LimitService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
-        // 1. If tier not selected, return basic info
         if (!user.isHasSelectedTier()) {
             return new UsageStatusResponse(user);
         }
 
-        // 2. If PRO, return PRO details
         if (user.getAccountTier() == AccountTier.PRO) {
             return new UsageStatusResponse(user, UsageDetails.pro(), "N/A");
         }
 
-        // 3. If FREE, get full details
-        // This is a good place to reset the counter for the dashboard
-        // *before* they make their first request of the day.
         LocalDate today = LocalDate.now();
         if (user.getLastRequestDate() == null || !user.getLastRequestDate().isEqual(today)) {
             user.setDailyRequestCount(0);
             user.setLastRequestDate(today);
-            userRepository.save(user); // Save the reset
+            userRepository.save(user);
         }
 
         LocalDateTime trialEndDate = user.getCreatedAt().plusDays(14);

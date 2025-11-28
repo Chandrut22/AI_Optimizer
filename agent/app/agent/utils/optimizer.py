@@ -25,7 +25,6 @@ class SeoOptimizer:
     Executes SEO strategy by rewriting content and generating new sections (Synchronous).
     """
     def __init__(self, strategy: Dict, onpage_data: Dict, research_data: Dict):
-        # Safely extract recommendations list
         self.strategy = strategy.get('recommendations', []) if strategy else []
         self.onpage_data = onpage_data or {}
         self.research_data = research_data or {}
@@ -35,22 +34,15 @@ class SeoOptimizer:
     def apply_optimizations(self) -> Dict:
         """Runs the optimization pipeline synchronously."""
         try:
-            # Filter recommendations
             title_recs = [r for r in self.strategy if r.get('category') in ['Title Tag', 'Meta Description', 'On-Page']]
             content_recs = [r for r in self.strategy if r.get('category') == 'Content']
 
             optimized_meta = None
             new_sections = []
-
-            # 1. Rewrite Title & Meta (if needed)
-            # We look for recommendations regarding title/meta
-            # Logic: If category matches OR the text mentions "title"
             if title_recs: 
                 print("   > Optimizing Title & Meta Description...")
                 optimized_meta = self._rewrite_title_and_meta(title_recs)
 
-            # 2. Generate New Sections (Limit to top 2 to save time/tokens)
-            # We look for "add", "gap", or "create" in the recommendation text
             gap_recs = [
                 r for r in content_recs 
                 if any(x in r.get('recommendation', '').lower() for x in ['add', 'gap', 'create', 'write'])
@@ -89,9 +81,7 @@ class SeoOptimizer:
         )
         chain = prompt | self.llm.with_structured_output(OptimizedTitleMeta)
         
-        # Extract Keyword safely
         kw_data = self.research_data.get('keyword_analysis')
-        # Handle if kw_data is None or empty
         if not kw_data: 
             kw_data = {}
             
@@ -106,14 +96,12 @@ class SeoOptimizer:
             "recommendations": rec_text
         })
         
-        # --- FIX: Support Pydantic V2 (.model_dump) and V1 (.dict) ---
         if hasattr(result, 'model_dump'): return result.model_dump()
         if hasattr(result, 'dict'): return result.dict()
         return result
 
     def _generate_new_sections(self, recommendations: List[Dict]) -> List[Dict]:
         """Generates new content paragraphs."""
-        # Extract Keyword safely
         kw_data = self.research_data.get('keyword_analysis')
         if not kw_data: 
             kw_data = {}
@@ -136,7 +124,6 @@ class SeoOptimizer:
             try:
                 res = chain.invoke({"topic": topic, "keyword": primary_kw})
                 
-                # --- FIX: Support Pydantic V2 (.model_dump) and V1 (.dict) ---
                 if hasattr(res, 'model_dump'):
                     res_dict = res.model_dump()
                 elif hasattr(res, 'dict'):

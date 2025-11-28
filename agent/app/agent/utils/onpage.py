@@ -33,21 +33,16 @@ class OnPageAnalyzer:
     def analyze(self) -> OnPageResult:
         """Runs all extraction methods and returns a structured result."""
         try:
-            # Basic Elements
             headings = self._extract_headings()
             images = self._extract_images()
             links = self._extract_links()
             body_text = self.soup.body.get_text(separator=' ', strip=True) if self.soup.body else ""
 
-            # Advanced SEO Elements (NEW)
             canonical = self._extract_canonical()
             robots = self._extract_robots()
             og_tags = self._extract_opengraph()
             schema = self._extract_schema()
 
-            # We pack the new data into the result. 
-            # Note: You might need to add these keys to your OnPageResult TypedDict if you want strict typing,
-            # but Python dicts will accept them dynamically.
             return {
                 "url": self.url,
                 "title": self._extract_title(),
@@ -92,7 +87,6 @@ class OnPageAnalyzer:
             else: links['external'].append(href)
         return links
 
-    # --- NEW ADVANCED METHODS ---
 
     def _extract_canonical(self) -> str:
         link = self.soup.find('link', rel='canonical')
@@ -103,7 +97,6 @@ class OnPageAnalyzer:
         return meta.get('content') if meta else "No specific directives (Index/Follow assumed)"
 
     def _extract_opengraph(self) -> str:
-        # Check for og:title, og:description, og:image
         og_props = ['og:title', 'og:description', 'og:image']
         found = []
         for prop in og_props:
@@ -115,6 +108,5 @@ class OnPageAnalyzer:
         return "Missing"
 
     def _extract_schema(self) -> str:
-        # Check for JSON-LD schema
         schema = self.soup.find('script', type='application/ld+json')
         return "Detected (JSON-LD)" if schema else "Missing"

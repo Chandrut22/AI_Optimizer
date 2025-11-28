@@ -1,4 +1,3 @@
-# app/main.py
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -27,19 +26,15 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Middlewares & logging
     setup_middlewares(app)
     app.add_middleware(RequestLoggingMiddleware)
 
-    # Routers
     app.include_router(health.router, prefix="/health", tags=["Health"])
     app.include_router(service.router, prefix="/api", tags=["API"])
     app.include_router(ai.router, prefix="/api", tags=["Agent"])
-    # debug routes should be mounted only if debug enabled (see below)
     if settings.DEBUG:
         app.include_router(debug.router, prefix="/debug", tags=["Debug"])
 
-    # Generic exception handler (logs and returns minimal info)
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
         logger.error("Unhandled exception: %s", exc, exc_info=True)

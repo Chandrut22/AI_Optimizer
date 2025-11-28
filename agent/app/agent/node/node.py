@@ -29,7 +29,6 @@ def crawl_node(state: AgentState) -> AgentState:
     """
     print(f"--- CRAWLING URL: {state['url']} ---")
     
-    # 1. Extract the target URL from the state
     target_url = state["url"]
     
     crawler = WebCrawler()
@@ -54,15 +53,10 @@ def technical_audit_node(state: AgentState) -> AgentState:
     
     target_url = state["url"]
     
-    # 1. Initialize Auditor
-    # Ensure 'PAGE_SPEED_INSIGHTS_API_KEY' is in your .env file
     auditor = TechnicalAuditor() 
     
-    # 2. Run Synchronous Audit
     audit_result = auditor.audit(target_url)
     
-    # 3. Prepare System Message
-    # This informs the LLM (in future nodes) what happened.
     if audit_result['error_message']:
         msg_content = f"Technical audit failed: {audit_result['error_message']}"
     else:
@@ -72,7 +66,6 @@ def technical_audit_node(state: AgentState) -> AgentState:
             f"LCP: {audit_result['core_web_vitals']['lcp']}s. "
         )
 
-    # 4. Update State
     return {
         "technicalAuditResult": audit_result,
         "messages": [SystemMessage(content=msg_content)]
@@ -85,10 +78,8 @@ def onpage_analyzer_node(state: AgentState) -> AgentState:
     """
     print(f"--- RUNNING ON-PAGE ANALYSIS: {state['url']} ---")
     
-    # 1. Get the HTML from the previous Crawl Node
     crawl_data = state.get("crawl_result")
     
-    # Safety Check: Did the crawler fail?
     if not crawl_data or not crawl_data.get("html_content"):
         return {
             "onPageResult": {"error_message": "Skipping analysis: No HTML content available from crawl."}
@@ -97,26 +88,17 @@ def onpage_analyzer_node(state: AgentState) -> AgentState:
     html_content = crawl_data["html_content"]
     url = state["url"]
 
-    # 2. Initialize the user's Analyzer Class
     analyzer = OnPageAnalyzer(url, html_content)
     
-    # 3. Run the Analysis
     results = analyzer.analyze()
-
-    # 4. Create a Summary for the LLM
-    # We summarize key issues here so the LLM doesn't have to process raw JSON arrays
-    
-    # Basic Metrics
     img_missing_alt = len([img for img in results['images'] if not img.get('alt')])
     h1_count = len(results.get('headings', {}).get('h1', []))
     title_len = len(results['title']) if results.get('title') else 0
     
-    # Advanced Metrics (New)
     og_status = results.get('og_tags', 'Missing')
     schema_status = results.get('schema', 'Missing')
     robots_status = results.get('robots', 'Missing')
     
-    # Check if canonical exists and is not the literal string "Missing"
     canonical_val = results.get('canonical')
     canonical_status = "Present" if canonical_val and canonical_val != "Missing" else "Missing"
     
@@ -130,7 +112,6 @@ def onpage_analyzer_node(state: AgentState) -> AgentState:
         f"- Advanced SEO: Canonical ({canonical_status}), Robots ({robots_status}), OG Tags ({og_status}), Schema ({schema_status})"
     )
 
-    # 5. Return the state update
     return {
         "onPageResult": results,
         "messages": [SystemMessage(content=summary_msg)]
@@ -142,13 +123,11 @@ def market_research_node(state: AgentState) -> AgentState:
     """
     print(f"--- RUNNING MARKET RESEARCH: {state['url']} ---")
     
-    # 1. Get prerequisites
     crawl_data = state.get("crawl_result", {})
     on_page_data = state.get("onPageResult", {})
     
     html_content = crawl_data.get("html_content")
     
-    # Safety check
     if not html_content:
         return {
             "marketResearchResult": {"error_message": "Skipping research: No HTML content available."}
@@ -162,7 +141,6 @@ def market_research_node(state: AgentState) -> AgentState:
     researcher = MarketResearcher(page_content=page_text, page_title=page_title)
     results = researcher.research()
 
-    # 4. Return State Update
     return {
         "marketResearchResult": results
     }
@@ -173,12 +151,10 @@ def strategy_node(state: AgentState) -> AgentState:
     """
     print(f"--- GENERATING STRATEGY: {state['url']} ---")
     
-    # 1. Extract inputs from State
     onpage = state.get("onPageResult", {})
     tech = state.get("technicalAuditResult", {})
     market = state.get("marketResearchResult", {})
     
-    # 2. Run Strategist
     strategist = SeoStrategist(
         onpage_data=onpage,
         technical_data=tech,
@@ -196,16 +172,13 @@ def optimization_node(state: AgentState) -> AgentState:
     """
     print(f"--- RUNNING CONTENT OPTIMIZER: {state['url']} ---")
     
-    # 1. Extract inputs
     strategy = state.get("strategyResult", {})
     onpage = state.get("onPageResult", {})
     research = state.get("marketResearchResult", {})
     
-    # 2. Run Optimizer
     optimizer = SeoOptimizer(strategy, onpage, research)
     results = optimizer.apply_optimizations()
     
-    # 3. Update State
     return {"optimizationResult": results}
 
 
@@ -478,7 +451,6 @@ def report_node(state: AgentState) -> dict:
     """
     print(f"--- GENERATING COMPREHENSIVE REPORT FOR: {state['url']} ---")
 
-    # 1. Extract Data
     crawl = state.get("crawl_result", {})
     audit = state.get("technicalAuditResult", {})
     onpage = state.get("onPageResult", {})
@@ -490,22 +462,17 @@ def report_node(state: AgentState) -> dict:
     if crawl.get("error_message"):
         return {"messages": [SystemMessage(content=f"Report Failed: {crawl['error_message']}")]}
 
-    # --- Helper: Safe Get ---
     def safe_get(obj, key, default="N/A"):
         if not obj: return default
         if isinstance(obj, dict): return obj.get(key, default)
         return getattr(obj, key, default)
 
-    # 2. Prepare Variables
     
-    # Overview
     perf_score = safe_get(audit, 'performance_score', 0)
     
-    # Basic SEO
     title = safe_get(onpage, 'title', 'Missing')
     meta = safe_get(onpage, 'meta_description', 'Missing')
     
-    # Headings
     headings = safe_get(onpage, 'headings', {})
     h1s = safe_get(headings, 'h1', [])
     h1_tag = h1s[0] if h1s else "No H1 Tag Found"
@@ -513,23 +480,19 @@ def report_node(state: AgentState) -> dict:
     h2s = safe_get(headings, 'h2', [])
     h2_list_str = "\n".join([f"- {h}" for h in h2s[:15]]) if h2s else "No H2 tags found."
 
-    # Images & Links
     images = safe_get(onpage, 'images', [])
     img_missing_alt = len([i for i in images if not safe_get(i, 'alt')])
     
-    # Tech
     core_vitals = safe_get(audit, 'core_web_vitals', {})
     lcp = safe_get(core_vitals, 'lcp', 0)
     cls = safe_get(core_vitals, 'cls', 0)
     
-    # Market
     kw_data = safe_get(market, 'keyword_analysis', {})
     primary_kw = safe_get(kw_data, 'primary_keyword', 'N/A')
     competitors = safe_get(market, 'competitor_urls', [])
     gaps = safe_get(safe_get(market, 'content_gap_analysis', {}), 'suggested_topics', [])
     gap_list_str = "\n".join([f"- {gap}" for gap in gaps]) if gaps else "No specific content gaps detected."
 
-    # Strategy Separation (High/Med/Low)
     recs = safe_get(strategy, 'recommendations', [])
     if recs and isinstance(recs[0], object) and hasattr(recs[0], 'dict'):
         recs = [r.dict() for r in recs]
@@ -542,7 +505,6 @@ def report_node(state: AgentState) -> dict:
     med_str = "\n\n".join(med_recs) if med_recs else "No medium-priority optimization suggested."
     low_str = "\n\n".join(low_recs) if low_recs else "No low-priority maintenance items."
 
-    # 3. Construct Context for LLM
     system_prompt = """You are a Senior Technical SEO Consultant writing a white-paper style audit report.
     
     Your goal is to populate the provided Long-Form Template.
@@ -595,7 +557,6 @@ def report_node(state: AgentState) -> dict:
     """
 
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.2)
-    # 4. Invoke LLM
     response = llm.invoke([
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_message)

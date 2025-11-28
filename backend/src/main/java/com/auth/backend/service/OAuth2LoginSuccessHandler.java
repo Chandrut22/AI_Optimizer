@@ -29,7 +29,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final CookieService cookieService; // ✅ REPLACED AuthenticationService with CookieService
+    private final CookieService cookieService; 
 
     @Value("${application.security.oauth2.frontend-redirect-url}")
     private String frontendRedirectUrl;

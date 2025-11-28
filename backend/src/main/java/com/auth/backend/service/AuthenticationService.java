@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.auth.backend.dto.AccessTokenResponse;
 import com.auth.backend.dto.AuthenticationRequest;
 import com.auth.backend.dto.AuthenticationResponse;
 import com.auth.backend.dto.RegisterRequest;
@@ -23,7 +24,6 @@ import com.auth.backend.repository.UserRepository;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import com.auth.backend.dto.AccessTokenResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -86,7 +86,6 @@ public class AuthenticationService {
         var jwtToken = jwtService.generateToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
 
-        // ✅ Use CookieService
         cookieService.addTokenCookie("access_token", jwtToken, Duration.ofMillis(jwtExpirationMs), response);
         cookieService.addTokenCookie("refresh_token", refreshToken, Duration.ofMillis(refreshExpirationMs), response);
 
@@ -194,7 +193,6 @@ public class AuthenticationService {
 
     public void logout(HttpServletResponse response) {
         log.info("Logging out user by clearing cookies.");
-        // ✅ Use CookieService
         cookieService.clearTokenCookie("access_token", response);
         cookieService.clearTokenCookie("refresh_token", response);
     }

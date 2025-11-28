@@ -32,32 +32,28 @@ public class AdminUserInitializer implements CommandLineRunner {
         Optional<User> existingAdmin = userRepository.findByEmail(ADMIN_EMAIL);
 
         if (existingAdmin.isEmpty()) {
-            // 1. Admin user does not exist, create it
             log.info("Admin user not found, creating one...");
             User adminUser = User.builder()
                     .name("Admin User")
                     .email(ADMIN_EMAIL)
                     .password(passwordEncoder.encode(ADMIN_PASSWORD))
                     .role(Role.ADMIN)
-                    .authProvider(AuthProvider.LOCAL) // Set provider
-                    .enabled(true) // <<< SET TO TRUE
-                    .build(); // createdAt will be set by @PrePersist
+                    .authProvider(AuthProvider.LOCAL) 
+                    .enabled(true)
+                    .build(); 
 
             userRepository.save(adminUser);
             log.info("Admin user created successfully with email: {}", ADMIN_EMAIL);
         } else {
-            // 2. Admin user exists, check if it needs to be updated
             User admin = existingAdmin.get();
             boolean needsUpdate = false;
 
-            // Check if provider is missing
             if (admin.getAuthProvider() == null) {
                 admin.setAuthProvider(AuthProvider.LOCAL);
                 needsUpdate = true;
                 log.info("Updating existing admin user to set AuthProvider to LOCAL.");
             }
             
-            // Check if admin is disabled
             if (!admin.isEnabled()) {
                  admin.setEnabled(true);
                  needsUpdate = true;

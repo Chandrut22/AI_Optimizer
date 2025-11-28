@@ -1,10 +1,9 @@
-# app/core/security.py
 from typing import Any, Dict
 import jwt
 from jwt import PyJWTError
 from fastapi import HTTPException, status
 from app.core.config import settings
-from app.auth.models import UserClaims  # <-- Imports the new model
+from app.auth.models import UserClaims  
 
 
 def _get_verification_key() -> str:
@@ -18,7 +17,6 @@ def _get_verification_key() -> str:
     if alg.startswith("RS") or alg.startswith("ES"):  # RSA/ECDSA
         if not settings.ACTIVATION_PUBLIC_KEY:
             raise RuntimeError(f"ACTIVATION_PUBLIC_KEY is required for {alg} algorithm")
-        # The key is expected in PEM format as a string
         return settings.ACTIVATION_PUBLIC_KEY
     
     elif alg.startswith("HS"):  # HMAC
@@ -41,8 +39,6 @@ def validate_activation_token(token: str) -> UserClaims:
         key = _get_verification_key()
         algorithms = [settings.ACTIVATION_ALGORITHM]
 
-        # Set up validation options
-        # We only verify audience/issuer if they are set in the config
         options = {
             "verify_aud": bool(settings.AUTH_AUDIENCE),
             "verify_iss": bool(settings.AUTH_ISSUER),
@@ -70,12 +66,9 @@ def validate_activation_token(token: str) -> UserClaims:
         ) from exc
 
     try:
-        # Pydantic validates the payload against the new UserClaims model
-        # It will automatically map "authorities" -> "scopes"
         claims = UserClaims(**payload)
         
     except Exception as exc:
-        # This will catch if 'sub' or 'exp' is missing, etc.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token payload is missing required claims: {exc}",

@@ -6,18 +6,15 @@ import json
 
 
 class Settings(BaseSettings):
-    # --- JWT Settings ---
     ACTIVATION_ALGORITHM: str = Field(default="RS256", description="JWT signing algorithm")
     ACTIVATION_PUBLIC_KEY: Optional[str] = Field(
         default=None, 
         description="PEM-formatted public key for RS256 validation"
     )
     
-    # --- Optional Claims ---
     AUTH_ISSUER: Optional[str] = Field(None, description="The 'iss' claim (optional)")
     AUTH_AUDIENCE: Optional[str] = Field(None, description="The 'aud' claim (optional)")
     
-    # --- Other Settings ---
     CORS_ALLOWED_ORIGINS: List[str] = Field(default_factory=list, description="Allowed CORS origins")
     DEBUG: bool = Field(default=False, description="Enable debug mode")
     LOG_LEVEL: str = Field(default="INFO", description="Log level")
@@ -30,12 +27,10 @@ class Settings(BaseSettings):
     
     ACTIVATION_SECRET: Optional[str] = Field(default=None, description="JWT secret (for HS256)")
 
-    # --- THIS IS THE FIX ---
     PAGESPEED_API_KEY: str = Field(
         ...,
         description="Google PageSpeed Insights API Key"
     )
-    # -----------------------
 
 
     class Config:

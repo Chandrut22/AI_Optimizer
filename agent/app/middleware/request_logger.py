@@ -3,7 +3,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-# Use your own logger instead of uvicorn.access
 logger = logging.getLogger("app.request")
 
 
@@ -14,16 +13,13 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        # Log incoming request
         logger.info(
             "Incoming request",
             extra={"method": request.method, "path": request.url.path},
         )
 
-        # Process request
         response = await call_next(request)
 
-        # Log response
         logger.info(
             "Response sent",
             extra={

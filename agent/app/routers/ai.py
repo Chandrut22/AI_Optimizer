@@ -7,44 +7,36 @@ from app.auth.dependencies import (
     save_scan_history_async
 )
 from app.auth.models import UserClaims
-from app.agent.main import MainAgent  # <-- Import the MainAgent class
+from app.agent.main import MainAgent 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# --- Pydantic Models for this endpoint ---
 
 class SeoAnalysisRequest(BaseModel):
     url: str = Field(..., description="The website URL to analyze")
 
-# The response will be a complex JSON report from the agent,
-# so we use a generic 'dict' as the response model.
-# We will also add our 'usage_details' to it.
 
 async def verify_url_accessible(url: str) -> bool:
     """
     Checks if a URL is reachable (returns 200 OK) without downloading the full body.
     """
     try:
-        # We use a custom User-Agent because some sites block default python-aiohttp agents
         headers = {'User-Agent': 'Mozilla/5.0 (compatible; SEO-Agent/1.0)'}
         timeout = aiohttp.ClientTimeout(total=10) # 10s timeout
         
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            # 1. Try HEAD request first (lightweight)
             try:
                 async with session.head(url, headers=headers, allow_redirects=True) as resp:
                     if resp.status < 400:
                         return True
-                    # If 405 Method Not Allowed, fall back to GET
                     if resp.status != 405:
                         logger.warning(f"URL check failed {url}: Status {resp.status}")
                         return False
             except (aiohttp.ClientError, Exception):
-                pass # Fallthrough to GET
+                pass
 
-            # 2. Fallback to GET request (stream=True to avoid downloading body)
             async with session.get(url, headers=headers, allow_redirects=True) as resp:
                 if resp.status < 400:
                     return True
@@ -65,7 +57,6 @@ async def run_seo_analysis(
     req: SeoAnalysisRequest,
     fastapi_request: Request,
     
-    # --- Dependencies handle all auth and limit checking ---
     user: UserClaims = Depends(get_current_activation_user),
     usage_data: dict = Depends(check_spring_boot_limit),
 ):
@@ -103,7 +94,6 @@ async def run_seo_analysis(
         return result_report
         
     except Exception as e:
-        # Log the error and return a 500
         logger.error(f"Main agent failed for {req.url}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

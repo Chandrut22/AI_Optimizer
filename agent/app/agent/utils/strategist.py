@@ -14,7 +14,7 @@ class SeoStrategy(BaseModel):
     recommendations: List[Recommendation]
 
 class StrategyResult(TypedDict):
-    recommendations: List[Dict[str, str]] # We store as list of dicts, not Pydantic objects
+    recommendations: List[Dict[str, str]]
     error_message: Optional[str]
 
 class SeoStrategist:
@@ -42,21 +42,16 @@ class SeoStrategist:
             """
         )
         
-        # Structure the output
         chain = prompt | self.llm.with_structured_output(SeoStrategy)
         
         try:
-            # Sync Invoke
             result = chain.invoke({"audit_data": formatted_data})
             
-            # Convert Pydantic -> Dict for LangGraph State compatibility
-            # .dict() is used in Pydantic v1 (LangChain default), .model_dump() in v2
             if hasattr(result, 'model_dump'):
-                return result.model_dump() # Pydantic v2
+                return result.model_dump() 
             if hasattr(result, 'dict'):
-                return result.dict() # Pydantic v1 (You were missing the parentheses here)
+                return result.dict() 
             
-            # Fallback if neither exists (unlikely if result is SeoStrategy)
             return result
             
         except Exception as e:

@@ -12,13 +12,11 @@ def configure_logging():
     root = logging.getLogger()
     root.setLevel(level)
 
-    # Console handler
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(level)
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
-    # File handler (rotating)
     fh = RotatingFileHandler(settings.LOG_FILE, maxBytes=10_000_000, backupCount=5, encoding="utf-8")
     fh.setLevel(level)
     fh.setFormatter(formatter)

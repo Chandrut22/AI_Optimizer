@@ -262,20 +262,20 @@ const SeoResultsPage = () => {
                   <div className="prose dark:prose-invert max-w-none text-foreground">
                     <ReactMarkdown
                       components={{
-                        h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-8 mb-4 pb-2 border-b text-foreground" {...props} />,
-                        h2: ({node, ...props}) => <h2 className="text-2xl font-semibold mt-8 mb-4 text-foreground" {...props} />,
-                        h3: ({node, ...props}) => <h3 className="text-xl font-medium mt-6 mb-3 text-foreground" {...props} />,
-                        p: ({node, ...props}) => <p className="mb-4 leading-7 text-muted-foreground" {...props} />,
-                        ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4 space-y-2 text-muted-foreground" {...props} />,
-                        ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-4 space-y-2 text-muted-foreground" {...props} />,
-                        li: ({node, ...props}) => <li className="pl-1" {...props} />,
-                        blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary pl-4 italic my-6 text-muted-foreground bg-muted/30 p-4 rounded-r" {...props} />,
-                        table: ({node, ...props}) => <div className="overflow-x-auto my-6 rounded-lg border"><table className="w-full text-sm text-left" {...props} /></div>,
-                        thead: ({node, ...props}) => <thead className="bg-muted/50 uppercase text-xs" {...props} />,
-                        th: ({node, ...props}) => <th className="px-6 py-3 font-semibold" {...props} />,
-                        td: ({node, ...props}) => <td className="px-6 py-4 border-t border-border" {...props} />,
-                        strong: ({node, ...props}) => <strong className="font-semibold text-foreground" {...props} />,
-                        hr: ({node, ...props}) => <hr className="my-8 border-border" {...props} />,
+                        h1: ({...props}) => <h1 className="text-3xl font-bold mt-8 mb-4 pb-2 border-b text-foreground" {...props} />,
+                        h2: ({...props}) => <h2 className="text-2xl font-semibold mt-8 mb-4 text-foreground" {...props} />,
+                        h3: ({...props}) => <h3 className="text-xl font-medium mt-6 mb-3 text-foreground" {...props} />,
+                        p: ({...props}) => <p className="mb-4 leading-7 text-muted-foreground" {...props} />,
+                        ul: ({...props}) => <ul className="list-disc pl-6 mb-4 space-y-2 text-muted-foreground" {...props} />,
+                        ol: ({...props}) => <ol className="list-decimal pl-6 mb-4 space-y-2 text-muted-foreground" {...props} />,
+                        li: ({...props}) => <li className="pl-1" {...props} />,
+                        blockquote: ({...props}) => <blockquote className="border-l-4 border-primary pl-4 italic my-6 text-muted-foreground bg-muted/30 p-4 rounded-r" {...props} />,
+                        table: ({...props}) => <div className="overflow-x-auto my-6 rounded-lg border"><table className="w-full text-sm text-left" {...props} /></div>,
+                        thead: ({...props}) => <thead className="bg-muted/50 uppercase text-xs" {...props} />,
+                        th: ({...props}) => <th className="px-6 py-3 font-semibold" {...props} />,
+                        td: ({...props}) => <td className="px-6 py-4 border-t border-border" {...props} />,
+                        strong: ({...props}) => <strong className="font-semibold text-foreground" {...props} />,
+                        hr: ({...props}) => <hr className="my-8 border-border" {...props} />,
                       }}
                     >
                       {analysis.fullReport}

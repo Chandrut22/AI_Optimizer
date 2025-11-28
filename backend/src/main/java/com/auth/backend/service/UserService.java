@@ -25,17 +25,13 @@ public class UserService {
      * @return UserResponse DTO containing the authenticated user's data.
      */
     public UserResponse getMyInfo() {
-        // Get the authentication object from Spring Security's context
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        // The principal's name is the email (as defined in User.getUsername())
         String userEmail = authentication.getName();
 
-        // Find the user in the repository
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + userEmail));
 
-        // Convert the User entity to a safe UserResponse DTO and return it
         return user.toUserResponse();
     }
 
@@ -44,15 +40,11 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        // (In a real app, selecting PRO would go to a payment flow first)
 
         user.setAccountTier(tier);
-        user.setHasSelectedTier(true); // <-- This is the important part
+        user.setHasSelectedTier(true); 
 
         userRepository.save(user);
     }
 
-    // You could add other user-specific methods here later, like:
-    // public UserResponse updateMyPassword(String oldPassword, String newPassword) { ... }
-    // public UserResponse updateMyName(String newName) { ... }
 }

@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 
 def setup_middlewares(app: FastAPI):
-    origins = settings.CORS_ALLOWED_ORIGINS or ["*"]  # be explicit in env for production
+    origins = settings.CORS_ALLOWED_ORIGINS or ["*"]  
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
