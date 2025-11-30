@@ -20,6 +20,7 @@ import com.auth.backend.enums.AccountTier;
 import com.auth.backend.enums.AuthProvider;
 import com.auth.backend.enums.Role;
 import com.auth.backend.model.User;
+import com.auth.backend.model.UserUsage;
 import com.auth.backend.repository.UserRepository;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,7 +37,7 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
-    private final CookieService cookieService; // ✅ Injected CookieService
+    private final CookieService cookieService;
 
     @Value("${application.security.jwt.expiration}")
     private long jwtExpirationMs;
@@ -55,15 +56,23 @@ public class AuthenticationService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
-                .accountTier(AccountTier.FREE)
-                .hasSelectedTier(false)
                 .authProvider(AuthProvider.LOCAL)
                 .enabled(false)
                 .verificationCode(verificationCode)
                 .codeExpiration(LocalDateTime.now().plusMinutes(15))
                 .build();
         
-        userRepository.save(user);
+        // Initialize UserUsage
+        var usage = UserUsage.builder()
+                .user(user)
+                .accountTier(AccountTier.FREE)
+                .hasSelectedTier(false)
+                .dailyRequestCount(0)
+                .build();
+
+        user.setUserUsage(usage);
+        
+        userRepository.save(user); // This saves both User and UserUsage due to CascadeType.ALL
         emailService.sendVerificationEmail(user.getName(), user.getEmail(), verificationCode);
     }
 
@@ -89,8 +98,11 @@ public class AuthenticationService {
         cookieService.addTokenCookie("access_token", jwtToken, Duration.ofMillis(jwtExpirationMs), response);
         cookieService.addTokenCookie("refresh_token", refreshToken, Duration.ofMillis(refreshExpirationMs), response);
 
+        // Access hasSelectedTier via the UserUsage relationship
+        boolean hasSelectedTier = user.getUserUsage() != null && user.getUserUsage().isHasSelectedTier();
+
         return AuthenticationResponse.builder()
-                .hasSelectedTier(user.isHasSelectedTier())
+                .hasSelectedTier(hasSelectedTier)
                 .build();
     }
 
@@ -172,7 +184,6 @@ public class AuthenticationService {
 
             if (jwtService.isTokenValid(refreshToken, user)) {
                 var newAccessToken = jwtService.generateToken(user);
-                // ✅ Use CookieService
                 cookieService.addTokenCookie("access_token", newAccessToken, Duration.ofMillis(jwtExpirationMs), response);
                 log.info("Access token refreshed for user: {}", userEmail);
             } else {

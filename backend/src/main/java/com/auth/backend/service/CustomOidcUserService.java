@@ -8,12 +8,14 @@ import org.springframework.security.authentication.InternalAuthenticationService
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser; // Import
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
+import com.auth.backend.enums.AccountTier;
 import com.auth.backend.enums.AuthProvider;
 import com.auth.backend.enums.Role;
 import com.auth.backend.model.User;
+import com.auth.backend.model.UserUsage;
 import com.auth.backend.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -31,24 +33,18 @@ public class CustomOidcUserService extends OidcUserService {
 
         try {
             processOidcUser(oidcUser);
-            
             return oidcUser;
         } catch (Exception ex) {
             throw new InternalAuthenticationServiceException(ex.getMessage(), ex.getCause());
         }
     }
 
-    /**
-     * Finds an existing user by email or creates a new one.
-     * This ensures every Google login corresponds to a record in your local user table.
-     */
     private User processOidcUser(OidcUser oidcUser) {
         String email = oidcUser.getEmail();
         Optional<User> userOptional = userRepository.findByEmail(email);
 
         if (userOptional.isPresent()) {
             User user = userOptional.get();
-            
             if (user.getAuthProvider() != AuthProvider.GOOGLE) {
                 log.warn("User with email {} already exists with {} provider.", email, user.getAuthProvider());
                 throw new OAuth2AuthenticationException(
@@ -56,8 +52,6 @@ public class CustomOidcUserService extends OidcUserService {
                     user.getAuthProvider() + " account."
                 );
             }
-            
-            log.debug("Found existing Google user: {}", email);
             return user;
         } else {
             log.info("Creating new user from Google login: {}", email);
@@ -65,9 +59,20 @@ public class CustomOidcUserService extends OidcUserService {
             User newUser = User.builder()
                     .email(email)
                     .name(oidcUser.getFullName())
-                    .authProvider(AuthProvider.GOOGLE) 
+                    .authProvider(AuthProvider.GOOGLE)
                     .role(Role.USER)
+                    .enabled(true) // Google users are auto-verified
                     .build();
+            
+            // Initialize Usage
+            UserUsage usage = UserUsage.builder()
+                    .user(newUser)
+                    .accountTier(AccountTier.FREE)
+                    .hasSelectedTier(false)
+                    .dailyRequestCount(0)
+                    .build();
+            
+            newUser.setUserUsage(usage);
             
             return userRepository.save(newUser);
         }

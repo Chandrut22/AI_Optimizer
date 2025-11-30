@@ -1,7 +1,7 @@
 package com.auth.backend.service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.util.Map;
 
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -9,155 +9,158 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.auth.backend.enums.AccountTier;
 import com.auth.backend.model.User;
-import com.auth.backend.repository.UserRepository; // Import AccountTier
+import com.auth.backend.model.UserUsage;
+import com.auth.backend.repository.UserRepository;
+import com.auth.backend.repository.UserUsageRepository;
 
-import lombok.Getter;
+import lombok.Builder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class LimitService {
 
+    private final UserUsageRepository userUsageRepository;
     private final UserRepository userRepository;
 
-    @Getter
-    public static class UsageDetails {
-        private final Object dailyCount; 
-        private final Object dailyMax; 
-        private final Object trialEndDate;
+    // Define limits
+    private static final int FREE_TIER_LIMIT = 5;
+    private static final int PRO_TIER_LIMIT = 25;
+    // private static final int ENTERPRISE_TIER_LIMIT = 1000;
 
-        public UsageDetails(Object dailyCount, Object dailyMax, Object trialEndDate) {
-            this.dailyCount = dailyCount;
-            this.dailyMax = dailyMax;
-            this.trialEndDate = trialEndDate;
-        }
+    // --- DTOs for Controller Responses ---
 
-        public static UsageDetails pro() {
-            return new UsageDetails("N/A", "UNLIMITED", "N/A");
-        }
-        
-        public static UsageDetails free(int dailyCount, LocalDateTime trialEndDate) {
-            return new UsageDetails(dailyCount, 10, trialEndDate.toLocalDate().toString());
-        }
-    }
-
-    @Getter 
+    @Data
+    @Builder
     public static class LimitCheckResponse {
-        private final boolean allowed;
-        private final String reason;
-        private final int httpStatus;
-        private final UsageDetails usage; 
-
-        public LimitCheckResponse(boolean allowed, String reason, int httpStatus) {
-            this.allowed = allowed;
-            this.reason = reason;
-            this.httpStatus = httpStatus;
-            this.usage = null; 
-        }
-
-        public LimitCheckResponse(boolean allowed, String reason, int httpStatus, UsageDetails usage) {
-            this.allowed = allowed;
-            this.reason = reason;
-            this.httpStatus = httpStatus;
-            this.usage = usage;
-        }
+        private boolean allowed;
+        private String reason;
+        private Map<String, Object> usage; // Details like current count/max
+        private int httpStatus; // e.g., 200 or 429
     }
 
-    @Getter
+    @Data
+    @Builder
     public static class UsageStatusResponse {
-        private final boolean hasSelectedTier;
-        private final AccountTier accountTier;
-        private final UsageDetails usage; 
-        private final String trialStatus; 
-
-        public UsageStatusResponse(User user, UsageDetails usage, String trialStatus) {
-            this.hasSelectedTier = user.isHasSelectedTier();
-            this.accountTier = user.getAccountTier();
-            this.usage = usage;
-            this.trialStatus = trialStatus;
-        }
-        
-        public UsageStatusResponse(User user) {
-            this.hasSelectedTier = user.isHasSelectedTier();
-            this.accountTier = user.getAccountTier();
-            this.usage = null;
-            this.trialStatus = "N/A";
-        }
+        private int dailyCount;
+        private int dailyMax;
+        private String tier;
+        private boolean hasSelectedTier;
+        private String resetDate;
     }
 
+    // --- Core Logic ---
 
     /**
-     * [ACTION 1: WRITE]
-     * Checks if a user is allowed, and if so, INCREMENTS their count.
-     * This is for the FastAPI agent.
+     * [WRITE] Checks limit for a user by email.
+     * If allowed: Increments counter, Updates date, Returns success.
+     * If denied: Returns failure with 429 status.
      */
     @Transactional
     public LimitCheckResponse checkAndIncrementLimitByEmail(String email) {
-        
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        if (!user.isHasSelectedTier()) {
-            return new LimitCheckResponse(false, "TIER_NOT_SELECTED", 403); 
+        // Get or Create the separate usage record
+        UserUsage usage = getOrCreateUsage(user);
+        
+        // Reset if it's a new day
+        resetCounterIfNewDay(usage);
+
+        AccountTier tier = usage.getAccountTier();
+        int limit = getLimitForTier(tier);
+        int currentCount = usage.getDailyRequestCount();
+
+        // Check Limit
+        if (currentCount >= limit) {
+            return LimitCheckResponse.builder()
+                    .allowed(false)
+                    .reason("Daily limit reached for " + tier + " tier.")
+                    .usage(Map.of(
+                            "current", currentCount,
+                            "max", limit,
+                            "tier", tier
+                    ))
+                    .httpStatus(429) // Too Many Requests
+                    .build();
         }
 
-        if (user.getAccountTier() == AccountTier.PRO) {
-            return new LimitCheckResponse(true, "ALLOWED_PRO", 200, UsageDetails.pro());
-        }
+        // Increment and Save
+        usage.setDailyRequestCount(currentCount + 1);
+        userUsageRepository.save(usage);
 
-        LocalDate today = LocalDate.now();
-        LocalDateTime trialEndDate = user.getCreatedAt().plusDays(14);
-
-        if (LocalDateTime.now().isAfter(trialEndDate)) {
-            return new LimitCheckResponse(false, "TRIAL_EXPIRED", 402);
-        }
-
-        if (user.getLastRequestDate() == null || !user.getLastRequestDate().isEqual(today)) {
-            user.setDailyRequestCount(0);
-            user.setLastRequestDate(today);
-        }
-
-        if (user.getDailyRequestCount() >= 10) {
-            return new LimitCheckResponse(false, "DAILY_LIMIT_REACHED", 429);
-        }
-
-        user.setDailyRequestCount(user.getDailyRequestCount() + 1);
-        userRepository.save(user);
-
-        UsageDetails usage = UsageDetails.free(user.getDailyRequestCount(), trialEndDate);
-        return new LimitCheckResponse(true, "ALLOWED", 200, usage);
+        return LimitCheckResponse.builder()
+                .allowed(true)
+                .reason("Request authorized")
+                .usage(Map.of(
+                        "current", usage.getDailyRequestCount() + 1,
+                        "max", limit,
+                        "tier", tier
+                ))
+                .httpStatus(200)
+                .build();
     }
 
     /**
-     * [ACTION 2: READ]
-     * Gets the user's current usage status WITHOUT incrementing the count.
-     * This is for the frontend dashboard.
+     * [READ] Gets current usage status without incrementing.
+     * Used by the frontend dashboard to show progress bars.
      */
-    @Transactional // Use Transactional to safely save the daily reset
+    @Transactional
     public UsageStatusResponse getUserUsageStatus(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        if (!user.isHasSelectedTier()) {
-            return new UsageStatusResponse(user);
-        }
-
-        if (user.getAccountTier() == AccountTier.PRO) {
-            return new UsageStatusResponse(user, UsageDetails.pro(), "N/A");
-        }
-
-        LocalDate today = LocalDate.now();
-        if (user.getLastRequestDate() == null || !user.getLastRequestDate().isEqual(today)) {
-            user.setDailyRequestCount(0);
-            user.setLastRequestDate(today);
-            userRepository.save(user);
-        }
-
-        LocalDateTime trialEndDate = user.getCreatedAt().plusDays(14);
-        UsageDetails usage = UsageDetails.free(user.getDailyRequestCount(), trialEndDate);
+        UserUsage usage = getOrCreateUsage(user);
         
-        String trialStatus = LocalDateTime.now().isAfter(trialEndDate) ? "EXPIRED" : "ACTIVE";
+        // Ensure the data displayed is accurate for "today"
+        resetCounterIfNewDay(usage); 
 
-        return new UsageStatusResponse(user, usage, trialStatus);
+        return UsageStatusResponse.builder()
+                .dailyCount(usage.getDailyRequestCount())
+                .dailyMax(getLimitForTier(usage.getAccountTier()))
+                .tier(usage.getAccountTier().name())
+                .hasSelectedTier(usage.isHasSelectedTier())
+                .resetDate(LocalDate.now().plusDays(1).toString()) // Tomorrow
+                .build();
+    }
+
+    // --- Helper Methods ---
+
+    private UserUsage getOrCreateUsage(User user) {
+        UserUsage usage = user.getUserUsage();
+        
+        // Recovery mechanism: If UserUsage is missing for an existing user, create it.
+        if (usage == null) {
+            usage = UserUsage.builder()
+                    .user(user)
+                    .accountTier(AccountTier.FREE)
+                    .dailyRequestCount(0)
+                    .lastRequestDate(LocalDate.now())
+                    .hasSelectedTier(false)
+                    .build();
+            user.setUserUsage(usage);
+            // Saving usage cascades if configured, but explicit save is safer here
+            userUsageRepository.save(usage);
+        }
+        return usage;
+    }
+
+    private void resetCounterIfNewDay(UserUsage usage) {
+        LocalDate today = LocalDate.now();
+        if (usage.getLastRequestDate() == null || !usage.getLastRequestDate().isEqual(today)) {
+            usage.setDailyRequestCount(0);
+            usage.setLastRequestDate(today);
+            userUsageRepository.save(usage);
+        }
+    }
+
+    private int getLimitForTier(AccountTier tier) {
+        if (tier == null) return FREE_TIER_LIMIT;
+        return switch (tier) {
+            case PRO -> PRO_TIER_LIMIT;
+            // case ENTERPRISE -> ENTERPRISE_TIER_LIMIT;
+            default -> FREE_TIER_LIMIT;
+        };
     }
 }

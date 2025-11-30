@@ -39,8 +39,9 @@ public class ScanHistory {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    // --- Relationship to User ---
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnore
+    @JsonIgnore 
     private User user;
 }
