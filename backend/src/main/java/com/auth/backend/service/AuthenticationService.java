@@ -56,6 +56,7 @@ public class AuthenticationService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
+                
                 .authProvider(AuthProvider.LOCAL)
                 .enabled(false)
                 .verificationCode(verificationCode)
