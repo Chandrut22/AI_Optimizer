@@ -92,12 +92,13 @@ const PanelPage = () => {
       // 2. Fetch History using auth.js
       const historyData = await getScanHistory();
       
-      // Map backend DTO to frontend structure
+      // Map backend DTO to frontend structure (handle missing fields)
       const mappedHistory = historyData.map(item => ({
+        id: item.id, // keep id for stable keys
         url: item.url,
-        score: 0, // Score isn't stored in basic history yet, defaulting to 0 or 'N/A'
-        date: new Date(item.createdAt).toLocaleDateString(),
-        status: "completed"
+        score: item.score ?? 0, // default if not provided
+        date: item.createdAt ? new Date(item.createdAt).toLocaleString() : "Unknown",
+        status: item.status ?? "completed"
       }));
       setRecentAnalyses(mappedHistory);
 
@@ -324,8 +325,12 @@ const PanelPage = () => {
                 <div className="space-y-3">
                   <h4 className="font-medium">Recent Analyses</h4>
                   <div className="space-y-2">
-                    {recentAnalyses.slice(0, 3).map((analysis, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate(`/seo-results/${encodeURIComponent(analysis.url)}`)}>
+                    {recentAnalyses.slice(0, 3).map((analysis) => (
+                      <div
+                        key={analysis.id ?? analysis.url}
+                        className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/seo-results/${encodeURIComponent(analysis.url)}`)}
+                      >
                         <div className="flex items-center gap-3">
                           <Globe className="h-4 w-4 text-muted-foreground" />
                           <div>
