@@ -117,3 +117,22 @@ export const selectTier = async (tier) => {
     throw error.response?.data || { message: "Failed to select tier" };
   }
 };
+
+export const getUsageStatus = async () => {
+  try {
+    const response = await API.get("/usage/status"); 
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to fetch tier data" };
+}
+};
+
+export const getScanHistory = async () => {
+  try {
+    const response = await API.get("/users/history`"); 
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching scan history:", error);
+    throw error;
+  }
+};
