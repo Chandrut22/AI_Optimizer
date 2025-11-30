@@ -51,29 +51,32 @@ public class AuthenticationService {
 
         String verificationCode = emailService.generateVerificationCode();
 
+        // 1. Create the User object (without Usage info first)
         var user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
-                
                 .authProvider(AuthProvider.LOCAL)
                 .enabled(false)
                 .verificationCode(verificationCode)
                 .codeExpiration(LocalDateTime.now().plusMinutes(15))
                 .build();
         
-        // Initialize UserUsage
+        // 2. Initialize UserUsage with Default FREE Tier
         var usage = UserUsage.builder()
-                .user(user)
+                .user(user) // Link back to parent
                 .accountTier(AccountTier.FREE)
                 .hasSelectedTier(false)
                 .dailyRequestCount(0)
                 .build();
 
+        // 3. Set the relationship in the User object
         user.setUserUsage(usage);
         
-        userRepository.save(user); // This saves both User and UserUsage due to CascadeType.ALL
+        // 4. Save User (Cascade will save UserUsage automatically)
+        userRepository.save(user); 
+        
         emailService.sendVerificationEmail(user.getName(), user.getEmail(), verificationCode);
     }
 
@@ -99,7 +102,7 @@ public class AuthenticationService {
         cookieService.addTokenCookie("access_token", jwtToken, Duration.ofMillis(jwtExpirationMs), response);
         cookieService.addTokenCookie("refresh_token", refreshToken, Duration.ofMillis(refreshExpirationMs), response);
 
-        // Access hasSelectedTier via the UserUsage relationship
+        // Check tier selection safely
         boolean hasSelectedTier = user.getUserUsage() != null && user.getUserUsage().isHasSelectedTier();
 
         return AuthenticationResponse.builder()

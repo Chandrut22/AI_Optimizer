@@ -12,7 +12,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import com.auth.backend.dto.UserResponse;
-import com.auth.backend.enums.AccountTier;
 import com.auth.backend.enums.AuthProvider;
 import com.auth.backend.enums.Role;
 
@@ -35,15 +34,17 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Getter
-@Setter
+@Getter 
+@Setter 
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "_user", indexes = {
-    @Index(name = "idx_user_email", columnList = "email", unique = true)
-})
+@Table(name = "_user",
+        indexes = {
+                @Index(name = "idx_user_email", columnList = "email", unique = true)
+        }
+)
 public class User implements UserDetails {
 
     @Id
@@ -74,12 +75,6 @@ public class User implements UserDetails {
     private LocalDateTime createdAt;
 
     // --- Verification & Reset Fields ---
-    
-    // THIS IS THE FIX: @Builder.Default ensures 'FREE' is used if the Builder ignores it
-    @Enumerated(EnumType.STRING)
-    @Column(name = "account_tier", nullable = false)
-    @Builder.Default 
-    private AccountTier accountTier = AccountTier.FREE;
 
     @Column(nullable = false)
     @Builder.Default
@@ -97,6 +92,7 @@ public class User implements UserDetails {
     private Set<ScanHistory> scanHistories = new HashSet<>();
 
     // 2. Connection to UserUsage (One User <-> One Usage Record)
+    // cascade = CascadeType.ALL ensures saving User also saves UserUsage
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     private UserUsage userUsage;
     
@@ -104,8 +100,6 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Best Practice: Spring Security usually expects "ROLE_" prefix. 
-        // If your Enum is just "USER", simple authority works, but be consistent.
         return List.of(new SimpleGrantedAuthority(role.name()));
     }
 
@@ -130,6 +124,7 @@ public class User implements UserDetails {
     // --- DTO Helper Method ---
 
     public UserResponse toUserResponse() {
+        // Safe check for null userUsage (in case of legacy data)
         boolean tierSelected = (this.userUsage != null) && this.userUsage.isHasSelectedTier();
 
         return UserResponse.builder()
