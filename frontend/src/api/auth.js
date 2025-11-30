@@ -129,7 +129,7 @@ export const getUsageStatus = async () => {
 
 export const getScanHistory = async () => {
   try {
-    const response = await API.get("/users/history`"); 
+    const response = await API.get("/users/history"); 
     return response.data;
   } catch (error) {
     console.error("Error fetching scan history:", error);
