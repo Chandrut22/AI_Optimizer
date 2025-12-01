@@ -1,9 +1,0 @@
-global:
-  scrape_interval: 15s # How often to scrape metrics
-
-scrape_configs:
-  - job_name: 'spring-boot-app'
-    metrics_path: '/actuator/prometheus'
-    static_configs:
-      # 'app:8080' is the Docker service name and port for your backend
-      - targets: ['ai-optimizer-backend:8080']
