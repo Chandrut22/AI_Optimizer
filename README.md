@@ -1,4 +1,3 @@
-
 # AI Optimizer
 
 ## 1. Project Overview
@@ -19,6 +18,8 @@ The project follows a modern microservices architecture, ensuring separation of 
 * **Backend (Auth & Data)**: A robust REST API for managing identities, scan history, and usage limits.
 * **Agent Service (AI Core)**: A dedicated service running a LangGraph workflow to perform heavy-duty scraping and analysis.
 * **Infrastructure**: Dockerized environment with PostgreSQL for data persistence and Prometheus/Grafana for observability.
+
+  ![Architecture Diagram](docs/architecture-diagram.png)
 
 ### Technology Stack
 
