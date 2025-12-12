@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown'; // ✅ Import this
+import ReactMarkdown from 'react-markdown'; 
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import {
   ExecutiveSummary,
   ActionPlan,
 } from '@/components/SeoResults';
-import { Download, Share2, ArrowLeft, RefreshCw, FileText } from 'lucide-react'; // Added FileText icon
+import { Download, Share2, ArrowLeft, RefreshCw, FileText } from 'lucide-react'; 
 import { analyzeSEO } from '@/api/seoService';
 
 const SeoResultsPage = () => {
@@ -40,16 +40,18 @@ const SeoResultsPage = () => {
   const transformBackendData = (data) => {
     if (!data) return null;
 
-    const tech = data.technicalAuditResult || {};
-    const strategy = data.strategyResult || {};
+    // Handle snake_case keys from the provided format
+    const tech = data.technical_audit_result || {};
+    const strategy = data.strategy_result || {};
     const recs = strategy.recommendations || [];
+    const coreVitals = tech.core_web_vitals || {};
 
-    // ✅ Extract the Markdown Report from messages
-    // We look for the message of type 'ai' or one that contains the specific header
-    const reportMessage = data.messages?.find(m => 
-      m.type === 'ai' || m.content?.includes("# COMPREHENSIVE SEO AUDIT REPORT")
-    );
-    const fullReport = reportMessage ? reportMessage.content : null;
+    // Helper to parse "22.6 s" or "80 ms" into numbers
+    const parseMetric = (val) => {
+      if (typeof val === 'number') return val;
+      if (typeof val === 'string') return parseFloat(val); // parseFloat ignores non-numeric suffixes like ' s'
+      return 0;
+    };
 
     const getRecsByPriority = (priority) => 
       recs.filter(r => r.priority?.toLowerCase() === priority.toLowerCase());
@@ -58,16 +60,16 @@ const SeoResultsPage = () => {
       url: data.url,
       auditDate: new Date().toLocaleDateString(),
       score: tech.performance_score || 0,
-      status: tech.performance_score >= 80 ? 'Good' : (tech.performance_score >= 50 ? 'Fair' : 'Needs Improvement'),
+      status: (tech.performance_score || 0) >= 80 ? 'Good' : ((tech.performance_score || 0) >= 50 ? 'Fair' : 'Needs Improvement'),
       
-      // ✅ Attach the full report to the state
-      fullReport: fullReport,
+      // ✅ Use the explicit 'final_report' field from the new data format
+      fullReport: data.final_report || null,
 
       summary: {
         url: data.url,
         auditDate: new Date().toLocaleDateString(),
         score: tech.performance_score || 0,
-        status: tech.performance_score >= 80 ? 'Good' : (tech.performance_score >= 50 ? 'Fair' : 'Needs Improvement'),
+        status: (tech.performance_score || 0) >= 80 ? 'Good' : ((tech.performance_score || 0) >= 50 ? 'Fair' : 'Needs Improvement'),
         findingsCount: {
           critical: getRecsByPriority('High').length,
           recommended: getRecsByPriority('Medium').length,
@@ -77,27 +79,35 @@ const SeoResultsPage = () => {
 
       metrics: {
         performanceScore: tech.performance_score,
-        lcp: tech.core_web_vitals?.lcp || 0,
-        fid: tech.core_web_vitals?.fid || 0,
-        cls: tech.core_web_vitals?.cls || 0,
+        // Parse strings like "22.6 s" to numbers for the UI components
+        lcp: parseMetric(coreVitals.lcp),
+        // Map TBT (Total Blocking Time) to FID slot if FID is missing, as they are related interactivity metrics
+        fid: parseMetric(coreVitals.fid || coreVitals.tbt), 
+        cls: parseMetric(coreVitals.cls),
         mobileReady: tech.mobile_friendly,
         httpsStatus: tech.uses_https,
+        // Add extra metrics if available in core_web_vitals
+        responseTime: parseMetric(coreVitals.si), // Using Speed Index as a proxy for response/load feel if needed, or 0
       },
 
       findings: {
+        // Map 'High' priority to 'critical' findings
+        // Note: New data uses 'action' and 'rationale' keys instead of 'recommendation' and 'justification'
         critical: getRecsByPriority('High').map(r => ({
-          title: r.recommendation,
-          description: r.justification,
+          title: r.action || r.recommendation, 
+          description: r.rationale || r.justification,
           details: ["Priority: High", `Category: ${r.category}`]
         })),
+        // Map 'Medium' priority to 'recommended' findings
         recommended: getRecsByPriority('Medium').map(r => ({
-          title: r.recommendation,
-          description: r.justification,
+          title: r.action || r.recommendation,
+          description: r.rationale || r.justification,
           details: ["Priority: Medium", `Category: ${r.category}`]
         })),
+        // Map 'Low' priority to 'good' findings (or low priority issues)
         good: getRecsByPriority('Low').map(r => ({
-          title: r.recommendation,
-          description: r.justification,
+          title: r.action || r.recommendation,
+          description: r.rationale || r.justification,
           details: ["Priority: Low", `Category: ${r.category}`]
         })),
       },
@@ -105,31 +115,31 @@ const SeoResultsPage = () => {
       recommendations: recs.map(r => ({
         priority: r.priority?.toLowerCase() || 'low',
         category: r.category,
-        recommendation: r.recommendation,
-        justification: r.justification,
+        recommendation: r.action || r.recommendation, // Map 'action' to 'recommendation' prop
+        justification: r.rationale || r.justification, // Map 'rationale' to 'justification' prop
         actionItems: ["Review site settings", "Apply fix based on category"]
       })),
 
       actionPlan: {
         high: getRecsByPriority('High').map(r => ({
-          recommendation: r.recommendation,
+          recommendation: r.action || r.recommendation,
           category: r.category,
           priority: 'High',
-          justification: r.justification,
+          justification: r.rationale || r.justification,
           actionItems: ["Immediate attention required"]
         })),
         medium: getRecsByPriority('Medium').map(r => ({
-          recommendation: r.recommendation,
+          recommendation: r.action || r.recommendation,
           category: r.category,
           priority: 'Medium',
-          justification: r.justification,
+          justification: r.rationale || r.justification,
           actionItems: ["Schedule for next sprint"]
         })),
         low: getRecsByPriority('Low').map(r => ({
-          recommendation: r.recommendation,
+          recommendation: r.action || r.recommendation,
           category: r.category,
           priority: 'Low',
-          justification: r.justification,
+          justification: r.rationale || r.justification,
           actionItems: ["Review when time permits"]
         })),
       },
@@ -148,6 +158,7 @@ const SeoResultsPage = () => {
 
       try {
         const rawData = await analyzeSEO(decodedUrl);
+        // console.log("Raw Data:", rawData); // Debugging
         const uiData = transformBackendData(rawData);
         setAnalysis(uiData);
       } catch (err) {
@@ -251,7 +262,7 @@ const SeoResultsPage = () => {
               {/* Action Plan */}
               {analysis.actionPlan && <ActionPlan actions={analysis.actionPlan} />}
 
-              {/* ✅ Detailed AI Analysis Report Section (New) */}
+              {/* ✅ Detailed AI Analysis Report Section */}
               {analysis.fullReport && (
                 <div className="bg-card dark:bg-[#1E293B] rounded-xl shadow-sm border border-border p-8">
                   <div className="flex items-center gap-2 mb-6">
