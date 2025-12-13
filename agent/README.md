@@ -7,7 +7,6 @@ The **Agent Service** is a high-performance Python application built with **Fast
 * **Framework:** FastAPI
 * **Runtime:** Python 3.10+
 * **AI & Agents:** LangGraph, LangChain, Google GenAI, Tavily, Firecrawl
-* **Web Automation:** Playwright
 * **Package Manager:** uv
 * **Server:** Uvicorn (ASGI)
 

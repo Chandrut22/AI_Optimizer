@@ -85,15 +85,11 @@ const PanelPage = () => {
       // 1. Fetch Usage Status using auth.js
       const usageData = await getUsageStatus();
       setTierData(usageData);
-      
-      // Persist to local storage as fallback/cache if needed
+
       localStorage.setItem("tierData", JSON.stringify(usageData));
 
-      // 2. Fetch History using auth.js
       const historyData = await getScanHistory();
-      
-      // Map backend DTO to frontend structure (handle missing fields)
-      // Sort by createdAt in descending order (newest first) and take only last 3
+
       const mappedHistory = historyData
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) // Sort descending by date
         .slice(0, 3) // Take only first 3 (most recent)

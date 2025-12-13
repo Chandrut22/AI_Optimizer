@@ -99,10 +99,30 @@ const Footer = () => {
         </div>
 
         {/* Bottom Copyright */}
-        <div className="border-t border-border/40 mt-8 pt-6 text-center">
-          <p className="text-[#6B7280] dark:text-[#94A3B8] text-sm">
-            © 2024 AI Optimizer. All rights reserved.
-          </p>
+        <div className="border-t border-border/40 mt-8 pt-6">
+          {/* Disclaimer Section */}
+          <div className="bg-muted/20 dark:bg-muted/10 rounded-lg p-4 mb-6">
+            <p className="text-[#6B7280] dark:text-[#94A3B8] text-xs leading-relaxed">
+              <span className="font-semibold text-foreground block mb-2">Disclaimer</span>
+              AI Optimizer is not operated under any registered business entity or corporate structure. Features, algorithms, and API integrations may change or be updated at any time without prior notice. We do not assume responsibility for data loss, ranking fluctuations, performance changes, or any consequences resulting from the use of this platform or its AI-generated outputs.
+              <br className="my-2" />
+              All insights, recommendations, and optimization results are provided "as is," without any warranties or guarantees of accuracy or SEO improvement. Search engine algorithms evolve frequently, and outcomes may vary. Users are fully responsible for how they apply the tools and information offered by this service.
+              <br className="my-2" />
+              This platform is not intended for production-critical workloads or situations requiring guaranteed SEO results. Use the service at your own risk.
+              <br className="my-2" />
+              For any questions or support inquiries, contact us at{" "}
+              <a href="mailto:optimizerwv1@gmail.com" className="text-[#38BDF8] hover:underline">
+                optimizerwv1@gmail.com
+              </a>
+            </p>
+          </div>
+          
+          {/* Copyright */}
+          <div className="text-center">
+            <p className="text-[#6B7280] dark:text-[#94A3B8] text-sm">
+              © 2025 AI Optimizer. All rights reserved.
+            </p>
+          </div>
         </div>
       </div>
     </footer>
