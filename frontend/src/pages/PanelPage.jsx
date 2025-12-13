@@ -93,13 +93,17 @@ const PanelPage = () => {
       const historyData = await getScanHistory();
       
       // Map backend DTO to frontend structure (handle missing fields)
-      const mappedHistory = historyData.map(item => ({
-        id: item.id, // keep id for stable keys
-        url: item.url,
-        score: item.score ?? 0, // default if not provided
-        date: item.createdAt ? new Date(item.createdAt).toLocaleString() : "Unknown",
-        status: item.status ?? "completed"
-      }));
+      // Sort by createdAt in descending order (newest first) and take only last 3
+      const mappedHistory = historyData
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) // Sort descending by date
+        .slice(0, 3) // Take only first 3 (most recent)
+        .map(item => ({
+          id: item.id, // keep id for stable keys
+          url: item.url,
+          score: item.score ?? 0, // default if not provided
+          date: item.createdAt ? new Date(item.createdAt).toLocaleString() : "Unknown",
+          status: item.status ?? "completed"
+        }));
       setRecentAnalyses(mappedHistory);
 
     } catch (error) {

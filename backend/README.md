@@ -45,7 +45,18 @@ The application is pre-configured for Gmail SMTP in `application.properties`. En
 * `spring.mail.username`
 * `spring.mail.password`
 
-## 🛠️ Installation & Running
+## � Database Schema
+
+The Backend uses PostgreSQL with three primary tables to manage users, usage tracking, and scan history:
+
+![Database Schema Diagram](../docs/database-schema.png)
+
+**Tables:**
+- **_user**: Stores user profiles with authentication credentials, OAuth provider info, and account status
+- **user_usage**: Tracks user subscription tier, daily request limits, and tier selection status
+- **scan_history**: Records all website scans performed by users with timestamps and URLs
+
+## �🛠️ Installation & Running
 
 ### Option 1: Using Docker Compose (Recommended)
 

@@ -18,6 +18,23 @@ The **Agent Service** is a high-performance Python application built with **Fast
 * **Usage Tracking:** Verifies user limits with the backend before performing expensive AI operations.
 * **Asynchronous Architecture:** Built on `asyncio` and `aiohttp` for non-blocking IO operations.
 
+## 📊 Multi-Agent Workflow
+
+The Agent Service orchestrates a sophisticated LangGraph-based workflow that coordinates multiple specialized AI agents to analyze websites comprehensively:
+
+![LangGraph Workflow Architecture](../docs/langgraph-workflow.png)
+
+**Workflow Nodes:**
+
+- **web_crawler**: Fetches raw HTML and page metadata from the target URL
+- **crawling_auditor**: Analyzes crawlability and indexation issues
+- **on_page_analyzer**: Evaluates content, keywords, and meta tags
+- **technical_auditor**: Runs Core Web Vitals and technical health checks
+- **market_researcher**: Analyzes competitors and market positioning
+- **seo_strategist**: Synthesizes findings into actionable strategy
+- **seo_optimizer**: Generates specific optimization recommendations
+- **report_generator**: Compiles comprehensive analysis into JSON report
+
 ## ⚙️ Configuration
 
 The application is configured using environment variables. Create a `.env` file in the root directory based on the example below:
