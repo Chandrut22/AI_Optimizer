@@ -1,5 +1,5 @@
 from langchain_core.messages import BaseMessage
-from operator import add_messages
+from operator import add as add_messages
 from typing import List, Optional, Sequence, TypedDict , Annotated
 
 from app.agent.utils.technical_auditor import TechnicalAuditor, TechnicalAuditResult
