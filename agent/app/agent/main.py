@@ -66,3 +66,38 @@ class MainAgent:
         result = await self.app.ainvoke(initial_state)
         
         return result
+    
+# ... (Previous code in agent/app/agent/main.py) ...
+
+# if __name__ == "__main__":
+#     import asyncio
+#     import json
+
+#     async def main():
+#         # 1. Define a test URL
+#         test_url = "https://ai-optimizer-beta.vercel.app/" 
+        
+#         print(f"Starting test for URL: {test_url}")
+        
+#         # 2. Initialize the Agent
+#         agent = MainAgent(url=test_url)
+        
+#         # 3. Run the Agent
+#         try:
+#             result = await agent.run()
+            
+#             # 4. Print the result (pretty-printed)
+#             print("\n--- FINAL AGENT STATE ---\n")
+#             # We convert to string with default=str to handle objects that aren't natively JSON serializable
+#             print(json.dumps(result, indent=2, default=str))
+            
+#             # Check for specific keys if needed
+#             if "final_report" in result:
+#                 print("\n--- FINAL REPORT ---\n")
+#                 print(result["final_report"])
+                
+#         except Exception as e:
+#             print(f"\nAn error occurred during execution: {e}")
+
+#     # Run the async main function
+#     asyncio.run(main())
