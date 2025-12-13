@@ -4,10 +4,10 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
@@ -30,13 +30,8 @@ public class CustomOidcUserService extends OidcUserService {
     @Override
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
         OidcUser oidcUser = super.loadUser(userRequest);
-
-        try {
-            processOidcUser(oidcUser);
-            return oidcUser;
-        } catch (Exception ex) {
-            throw new InternalAuthenticationServiceException(ex.getMessage(), ex.getCause());
-        }
+        processOidcUser(oidcUser);
+        return oidcUser;
     }
 
     private User processOidcUser(OidcUser oidcUser) {
@@ -45,9 +40,12 @@ public class CustomOidcUserService extends OidcUserService {
 
         if (userOptional.isPresent()) {
             User user = userOptional.get();
+            // If the user registered with Password (LOCAL), block Google Login
             if (user.getAuthProvider() != AuthProvider.GOOGLE) {
                 log.warn("User with email {} already exists with {} provider.", email, user.getAuthProvider());
+                
                 throw new OAuth2AuthenticationException(
+                    new OAuth2Error("account_exists"), 
                     "User with email " + email + " already exists. Please log in with your " +
                     user.getAuthProvider() + " account."
                 );
