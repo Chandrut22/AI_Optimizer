@@ -1,13 +1,14 @@
 from langgraph.graph import START, END, StateGraph
 from app.agent.node.node import (
     AgentState,
-    crawl_node,
-    technical_audit_node,
-    onpage_analyzer_node,
-    market_research_node,
-    strategy_node,
-    optimization_node,
-    report_node
+    call_firecrawl,
+    call_technical_auditor, 
+    call_crawling_auditor,
+    call_on_page_analyzer,
+    call_market_researcher,
+    call_seo_strategist,
+    call_seo_optimizer,
+    call_report_generator
 )
 
 class MainAgent:
@@ -21,25 +22,27 @@ class MainAgent:
         """
         workflow = StateGraph(AgentState)
 
-        workflow.add_node("crawler", crawl_node)
-        workflow.add_node("auditor", technical_audit_node)
-        workflow.add_node("onpage_analyzer", onpage_analyzer_node)
-        workflow.add_node("market_researcher", market_research_node)
-        workflow.add_node("strategist", strategy_node)
-        workflow.add_node("optimizer", optimization_node)
-        workflow.add_node("reporter", report_node)
+        workflow.add_node("web_crawler", call_firecrawl)
+        workflow.add_node("technical_auditor", call_technical_auditor)
+        workflow.add_node("crawling_auditor", call_crawling_auditor)
+        workflow.add_node("on_page_analyzer", call_on_page_analyzer)
+        workflow.add_node("market_researcher", call_market_researcher)
+        workflow.add_node("seo_strategist", call_seo_strategist)
+        workflow.add_node("seo_optimizer", call_seo_optimizer)
+        workflow.add_node("report_generator", call_report_generator)
 
         
-        workflow.add_edge(START, "auditor")
-        workflow.add_edge("auditor", END) 
-
-        workflow.add_edge(START, "crawler")
-        workflow.add_edge("crawler", "onpage_analyzer")
-        workflow.add_edge("onpage_analyzer", "market_researcher")
-        workflow.add_edge("market_researcher", "strategist")
-        workflow.add_edge("strategist", "optimizer")
-        workflow.add_edge("optimizer", "reporter")
-        workflow.add_edge("reporter", END)
+        workflow.add_edge(START, "web_crawler")
+        workflow.add_edge(START,"technical_auditor")
+        workflow.add_edge("web_crawler","crawling_auditor")
+        workflow.add_edge("web_crawler","on_page_analyzer")
+        workflow.add_edge("technical_auditor","market_researcher")
+        workflow.add_edge("crawling_auditor","market_researcher")
+        workflow.add_edge("on_page_analyzer","market_researcher")
+        workflow.add_edge("market_researcher","seo_strategist")
+        workflow.add_edge("seo_strategist","seo_optimizer")
+        workflow.add_edge("seo_optimizer","report_generator")
+        workflow.add_edge("report_generator",END)
 
         return workflow.compile()
 
