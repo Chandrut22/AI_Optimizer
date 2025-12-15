@@ -256,7 +256,7 @@ const Login = () => {
               </p>
             </div>
 
-            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            {/* <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <div className="text-center">
                 <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-2">Demo Credentials</p>
                 <div className="space-y-1 text-xs text-blue-600 dark:text-blue-400">
@@ -264,7 +264,7 @@ const Login = () => {
                   <p>Password: password123</p>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           <div className="mt-8 text-center">
